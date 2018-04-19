@@ -11,7 +11,7 @@ using StatsFuns.logistic
 import Base.==
 
 export ComparisonSummary, counts_delta, SparseComparisonSummary
-export LinkMatrix, add_link, add_link!, remove_link!, remove_link
+export LinkMatrix, add_link, add_link!, remove_link!, remove_link, switch!_link, switch_link
 export E_step, M_step, estimate_EM
 export bipartite_cluster, sparseblock_idxlims, bipartite_cluster_sparseblock
 export counts_matches,

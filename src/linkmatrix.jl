@@ -113,3 +113,16 @@ function remove_link!{G <: Integer}(row::G, col::G, C::LinkMatrix)
 end
 
 remove_link{G <: Integer}(row::G, col::G, C::LinkMatrix) = remove_link!(row, col, deepcopy(C))
+
+function switch_link!{G <: Integer}(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix)
+    if (C.row2col[row1] != col1) || (C.row2col[row2] != col2)
+        warn("provided pairs not current links, no switch")
+    end
+    C.row2col[row1] = col2
+    C.row2col[row2] = col1
+    C.col2row[col1] = row2
+    C.col2row[col2] = row1
+    return C
+end
+
+switch_link{G <: Integer}(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) = switch_link!(row1, col1, row2, col2, deepcopy(C))
