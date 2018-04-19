@@ -1,11 +1,14 @@
 ####################
-#Green and Mardia 2006
+#Green and Mardia 2006 - these do not include normalizing constants, can computed by
+#softmax(exppenalty_logprior.(0:min(nrow, ncol)))
 ####################
 
 exppenalty_prior(nlink::Integer, θ::Real) = exp(-θ * nlink)
+exppenalty_prior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = exp(-θ * nlink)
 exppenalty_prior(C::LinkMatrix, θ::Real) = exppenalty_prior(C.nlink, θ)
 
 exppenalty_logprior(nlink::Integer, θ::Real) = -θ * nlink
+exppenalty_logprior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = -θ * nlink
 exppenalty_logprior(C::LinkMatrix, θ::Real) = exppenalty_logprior(C.nlink, θ)
 
 """
@@ -18,6 +21,7 @@ function exppenalty_ratio(nlink1::Integer, nlink2::Integer, θ::Real)
         return exp(θ * (nlink2 - nlink1))
     end
 end
+exppenalty_ratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, θ::Real) = exppenalty_ratio(nlink1, nlink2, θ)
 
 function exppenalty_ratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
     if (C1.nrow != C2.nrow) || (C1.ncol != C2.ncol)
@@ -27,17 +31,8 @@ function exppenalty_ratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
 end
 
 """
-P(C with 1 more link) / P(C)
+log(P(C with L2 links) / P(C with L1 links))
 """
-exppenalty_ratiop1(θ::Real) = exp(-θ)
-exppenalty_ratiop1(nlink::Integer, θ::Real) = exp(-θ)
-
-"""
-P(C) / P(C with 1 less link)
-"""
-exppenalty_ratiom1(θ::Real) = exp(θ)
-exppenalty_ratiom1(nlink::Integer, θ::Real) = exp(θ)
-
 function exppenalty_logratio(nlink1::Integer, nlink2::Integer, θ::Real)
     if nlink1 == nlink2
         return 1.0
@@ -45,6 +40,8 @@ function exppenalty_logratio(nlink1::Integer, nlink2::Integer, θ::Real)
         return θ * (nlink2 - nlink1))
     end
 end
+
+exppenalty_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, θ::Real) = exppenalty_logratio(nlink1, nlink2, θ)
 
 function exppenalty_logratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
     if (C1.nrow != C2.nrow) || (C1.ncol != C2.ncol)
@@ -54,16 +51,18 @@ function exppenalty_logratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
 end
 
 """
-P(C with 1 more link) / P(C)
+P(C with L + n links) / P(C with L links)
 """
-exppenalty_logratiop1(θ::Real) = -θ
-exppenalty_logratiop1(nlink::Integer, θ::Real) = -θ
+exppenalty_ratiopn(nadd::Integer, nlink::Integer, θ::Real) = exp(-θ * nadd)
+exppenalty_ratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = exp(-θ * nadd)
+exppenalty_ratiopn(nadd::Integer, C::LinkMatrix, θ::Real) = exp(-θ * nadd)
 
 """
-P(C) / P(C with 1 less link)
+log(P(C with L + n links) / P(C with L links))
 """
-exppenalty_logratiom1(θ::Real) = θ
-exppenalty_logratiom1(nlink::Integer, θ::Real) = θ
+exppenalty_logratiopn(nadd::Integer, nlink::Integer, θ::Real) = -θ * nadd
+exppenalty_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = -θ * nadd
+exppenalty_logratiopn(nadd::Integer, C::LinkMatrix, θ::Real) = -θ * nadd
 
 ####################
 #Sadinle 2017
@@ -130,6 +129,9 @@ end
 #    end
 #end
 
+betabipartite_ratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real) = exp(betabipartite_logratiopn(nadd, nlink, nrow, ncol, α, β))
+betabipartite_ratiopn(nadd::Integer, C::LinkMatrix, nrow::Integer, ncol::Integer, α::Real, β::Real) = exp(betabipartite_logratiopn(nadd, C.nlink, nrow, ncol, α, β))
+
 function betabipartite_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nlink1 == nlink2
         return 0.0
@@ -158,3 +160,18 @@ end
 #        end
 #    end
 #end
+
+function betabipartite_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
+    if nadd == 0
+        return 0.0
+    end
+    if nrow < ncol
+        return betabipartite_logratiopn(nadd, nlink, ncol, nrow, α, β)
+    end
+    nnew = nlink + nadd
+    coeff1 = lfact(nrow - nnew) - lfact(nrow - nlink)
+    coeff2 = lbeta(nnew + α, ncol - nnew + β) - lbeta(nlink + α, ncol - nlink + β)
+    return coeff1 + coeff2
+end
+
+betabipartite_logratiopn(nadd::Integer, C::LinkMatrix, nrow::Integer, ncol::Integer, α::Real, β::Real) = betabipartite_logratiopn(nadd, C.nlink, nrow, ncol, α, β)

@@ -45,7 +45,9 @@ export randomwalk1_draw,
     locally_balanced_sqrt_draw,
     locally_balanced_barker_draw,
     randomwalk2_draw
-export exppenalty_logratio, betabipartite_logratio
+export exppenalty_logprior, betabipartite_logprior,
+    exppenalty_logratio, betabipartite_logratio,
+    exppenalty_logratiopn, betabipartite_logratiopn
 export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count
 
 include("comparisonsummary.jl")
