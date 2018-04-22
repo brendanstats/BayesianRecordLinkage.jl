@@ -340,7 +340,7 @@ function randomwalk1_draw(rng::CartesianRange{CartesianIndex{2}},
     #only accept double switches with p = 0.5 to make sampling uniform over moves
     if movetype == 5
         if rand() < 0.5
-            return randomwalk1_draw(C, compsum, countDeltas)
+            return randomwalk1_draw(rng, C, compsum, countDeltas)
         end
     end
 
