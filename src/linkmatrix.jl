@@ -88,7 +88,9 @@ end
 
 function add_link!{G <: Integer}(row::G, col::G, C::LinkMatrix{G})
     if (!iszero(C.row2col[row])) || (!iszero(C.col2row[col]))
-        warn("row or column already contains a link, no addition made")
+        r2c = C.row2col[row]
+        c2r = C.col2row[col]
+        warn("row or column already contains a link, no addition made row: ($row $r2c) col: ($c2r $col)")
     else
         C.row2col[row] = col
         C.col2row[col] = row

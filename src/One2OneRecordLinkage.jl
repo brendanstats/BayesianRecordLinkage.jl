@@ -7,10 +7,10 @@ using Distributions.Dirichlet
 using Levenshtein.levenshtein
 using DataStructures: Queue, enqueue!, dequeue!
 using StatsBase
-using StatsFuns.logistic
+using StatsFuns: logistic, log1pexp, loghalf, softmax, logsumexp
 import Base.==
 
-export ComparisonSummary, counts_delta, SparseComparisonSummary
+export ComparisonSummary, SparseComparisonSummary, counts_delta, obs_delta
 export LinkMatrix, add_link, add_link!, remove_link!, remove_link, switch!_link, switch_link
 export E_step, M_step, estimate_EM
 export bipartite_cluster, sparseblock_idxlims, bipartite_cluster_sparseblock
@@ -37,25 +37,24 @@ export counts_matches,
     map_solver_search,
     map_solver_search_cluster,
     map_solver_search_initialize
-export randomwalk1_draw,
-    identity_balance,
-    sqrt_balance,
-    barker_balance,
-    globally_balanced_draw,
-    locally_balanced_sqrt_draw,
-    locally_balanced_barker_draw,
-    randomwalk2_draw
 export exppenalty_logprior, betabipartite_logprior,
     exppenalty_logratio, betabipartite_logratio,
     exppenalty_logratiopn, betabipartite_logratiopn
-export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count
+export identity_balance, lidentity_balance, sqrt_balance, lsqrt_balance, barker_balance, lbarker_balance
+export randomwalk1_draw,
+    globally_balanced_draw, globally_balanced_draw!,
+    locally_balanced_sqrt_draw, locally_balanced_sqrt_draw!,
+    locally_balanced_barker_draw, locally_balanced_barker_draw!,
+    randomwalk2_draw
+export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count, mh_gibbs_count_inplace
 
 include("comparisonsummary.jl")
 include("linkmatrix.jl")
 include("em_functions.jl")
 include("clustering_functions.jl")
 include("map_functions.jl")
-include("move_functions.jl")
 include("prior_functions.jl")
+include("balancing_functions.jl")
+include("move_functions.jl")
 include("mcmc.jl")
 end

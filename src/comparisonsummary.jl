@@ -271,3 +271,13 @@ function counts_delta{G <: Integer, T <: Integer}(compsum::Union{ComparisonSumma
     end
     return deltas
 end
+
+function obs_delta{G <: Integer, T <: Integer}(compsum::Union{ComparisonSummary{G, T}, SparseComparisonSummary{G, T}})
+    deltas = zeros(Int8, size(compsum.obsvecs))
+    for jj in 1:size(compsum.obsvecs, 2), ii in 1:size(compsum.obsvecs, 1)
+        if !iszero(compsum.obsvecs[ii, jj])
+            deltas[ii, jj] = one(Int8)
+        end
+    end
+    return deltas
+end

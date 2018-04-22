@@ -37,7 +37,7 @@ function exppenalty_logratio(nlink1::Integer, nlink2::Integer, θ::Real)
     if nlink1 == nlink2
         return 1.0
     else
-        return θ * (nlink2 - nlink1))
+        return θ * (nlink2 - nlink1)
     end
 end
 
@@ -69,21 +69,13 @@ exppenalty_logratiopn(nadd::Integer, C::LinkMatrix, θ::Real) = -θ * nadd
 ####################
 
 function betabipartite_prior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
-    if nrow >= ncol
-        return prod(nlink + 1:nrow) * beta(nlink + α, ncol - nlink + β) / beta(α, β)
-    else
-        return prod(nlink + 1:ncol) * beta(nlink + α, nrow - nlink + β) / beta(α, β)
-    end
+    return nrow >= ncol ? prod(nlink + 1:nrow) * beta(nlink + α, ncol - nlink + β) / beta(α, β) : prod(nlink + 1:ncol) * beta(nlink + α, nrow - nlink + β) / beta(α, β)
 end
 
 betabipartite_prior(C::LinkMatrix, α::Real, β::Real) = betabipartite_prior(nlink, nrow, ncol, α, β)
 
 function betabipartite_logprior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
-    if nrow >= ncol
-        return lfact(nrow - nlink) - lfact(nrow) +  lbeta(nlink + α, ncol - nlink + β) - lbeta(α, β)
-    else
-        return lfact(ncol - nlink) - lfact(ncol) + lbeta(nlink + α, nrow - nlink + β) - lbeta(α, β)
-    end
+    nrow >= ncol ? lfact(nrow - nlink) - lfact(nrow) +  lbeta(nlink + α, ncol - nlink + β) - lbeta(α, β) : lfact(ncol - nlink) - lfact(ncol) + lbeta(nlink + α, nrow - nlink + β) - lbeta(α, β)
 end
 
 betabipartite_logprior(C::LinkMatrix, α::Real, β::Real) = betabipartite_logprior(nlink, nrow, ncol, α, β)
@@ -92,17 +84,9 @@ function betabipartite_ratio(nlink1::Integer, nlink2::Integer, nrow::Integer, nc
     if nlink1 == nlink2
         return 1.0
     elseif nlink1 > nlink2 #adjust first term in ratio
-        if nrow >= ncol
-            return prod((nrow - nlink1):(nrow - nlink2))^-1 * beta(nlink1 + α, ncol - nlink1 + β) / beta(nlink2 + α, ncol - nlink2 + β)
-        else
-            return prod((ncol - nlink1):(ncol - nlink2))^-1 * beta(nlink1 + α, nrow - nlink1 + β) / beta(nlink2 + α, nrow - nlink2 + β)
-        end
+        nrow >= ncol ? prod((nrow - nlink1):(nrow - nlink2))^-1 * beta(nlink1 + α, ncol - nlink1 + β) / beta(nlink2 + α, ncol - nlink2 + β) : prod((ncol - nlink1):(ncol - nlink2))^-1 * beta(nlink1 + α, nrow - nlink1 + β) / beta(nlink2 + α, nrow - nlink2 + β)
     else #nlink1 < nlink2
-        if nrow >= ncol
-            return prod((nrow - nlink2):(nrow - nlink1)) * beta(nlink1 + α, ncol - nlink1 + β) / beta(nlink2 + α, ncol - nlink2 + β)
-        else
-            return prod((ncol - nlink2):(ncol - nlink1)) * beta(nlink1 + α, nrow - nlink1 + β) / beta(nlink2 + α, nrow - nlink2 + β)
-        end
+        nrow >= ncol ? prod((nrow - nlink2):(nrow - nlink1)) * beta(nlink1 + α, ncol - nlink1 + β) / beta(nlink2 + α, ncol - nlink2 + β) : prod((ncol - nlink2):(ncol - nlink1)) * beta(nlink1 + α, nrow - nlink1 + β) / beta(nlink2 + α, nrow - nlink2 + β)
     end
 end
 
@@ -136,11 +120,7 @@ function betabipartite_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer,
     if nlink1 == nlink2
         return 0.0
     else
-        if  nrow >= ncol
-            return lfact(nrow - nlink1) - lfact(nrow - nlink2) + lbeta(nlink1 + α, ncol - nlink1 + β) - lbeta(nlink2 + α, ncol - nlink2 + β)
-        else
-            return lfact(ncol - nlink1) - lfact(ncol - nlink2) + lbeta(nlink1 + α, nrow - nlink1 + β) - lbeta(nlink2 + α, nrow - nlink2 + β)
-        end
+        nrow >= ncol ? lfact(nrow - nlink1) - lfact(nrow - nlink2) + lbeta(nlink1 + α, ncol - nlink1 + β) - lbeta(nlink2 + α, ncol - nlink2 + β) : lfact(ncol - nlink1) - lfact(ncol - nlink2) + lbeta(nlink1 + α, nrow - nlink1 + β) - lbeta(nlink2 + α, nrow - nlink2 + β)
     end
 end
 
@@ -174,4 +154,4 @@ function betabipartite_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, 
     return coeff1 + coeff2
 end
 
-betabipartite_logratiopn(nadd::Integer, C::LinkMatrix, nrow::Integer, ncol::Integer, α::Real, β::Real) = betabipartite_logratiopn(nadd, C.nlink, nrow, ncol, α, β)
+betabipartite_logratiopn(nadd::Integer, C::LinkMatrix, α::Real, β::Real) = betabipartite_logratiopn(nadd, C.nlink, C.nrow, C.ncol, α, β)
