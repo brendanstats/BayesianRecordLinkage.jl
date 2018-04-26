@@ -15,28 +15,33 @@ export LinkMatrix, add_link, add_link!, remove_link!, remove_link, switch!_link,
 export E_step, M_step, estimate_EM
 export bipartite_cluster, sparseblock_idxlims, bipartite_cluster_sparseblock
 export counts_matches,
-    max_MU,
     weights_vector,
+    penalized_weights_vector,
     weights_matrix,
     maximum_weights_vector,
     maximum_weights_matrix,
     penalized_weights_matrix,
     indicator_weights_matrix,
-    compute_costs,
+    compute_costs
+export max_MU,
     max_C,
     max_C_offsets,
     max_C_initialized!,
     max_C_cluster,
-    lsap_checkoptimal,
-    map_solver,
+    max_C_auction,
+    max_C_auction_cluster
+export map_solver,
     map_solver_initialize,
     map_solver_cluster,
-    map_solver_iter,
+    map_solver_auction,
+    map_solver_auction_cluster
+export map_solver_iter,
     map_solver_iter_cluster,
     map_solver_iter_initialize,
     map_solver_search,
     map_solver_search_cluster,
-    map_solver_search_initialize
+    map_solver_search_initialize,
+    map_solver_search_auction
 export exppenalty_logprior, betabipartite_logprior,
     exppenalty_logratio, betabipartite_logratio,
     exppenalty_logratiopn, betabipartite_logratiopn
@@ -52,7 +57,10 @@ include("comparisonsummary.jl")
 include("linkmatrix.jl")
 include("em_functions.jl")
 include("clustering_functions.jl")
+include("weight_functions.jl")
+include("maximization_functions.jl")
 include("map_functions.jl")
+include("sequence_map_functions.jl")
 include("prior_functions.jl")
 include("balancing_functions.jl")
 include("move_functions.jl")
