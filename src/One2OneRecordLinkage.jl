@@ -10,9 +10,17 @@ using StatsBase
 using StatsFuns: logistic, log1pexp, loghalf, softmax, logsumexp
 import Base.==
 
-export ComparisonSummary, SparseComparisonSummary, counts_delta, obs_delta
+export ComparisonSummary,
+    SparseComparisonSummary,
+    extract_integers,
+    extract_integers!,
+    stream_comparisonsummary,
+    merge_comparisonsummary,
+    counts_delta,
+    obs_delta
 export LinkMatrix, add_link, add_link!, remove_link!, remove_link, switch!_link, switch_link
 export E_step, M_step, estimate_EM
+export ConnectedComponents, get_component, get_ranges, get_dimensions
 export bipartite_cluster, sparseblock_idxlims, bipartite_cluster_sparseblock
 export counts_matches,
     weights_vector,
@@ -41,7 +49,8 @@ export map_solver_iter,
     map_solver_search,
     map_solver_search_cluster,
     map_solver_search_initialize,
-    map_solver_search_auction
+    map_solver_search_auction,
+    map_solver_search_auction_cluster
 export exppenalty_logprior, betabipartite_logprior,
     exppenalty_logratio, betabipartite_logratio,
     exppenalty_logratiopn, betabipartite_logratiopn
@@ -56,6 +65,7 @@ export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count, mh_gibbs_count_inplace
 include("comparisonsummary.jl")
 include("linkmatrix.jl")
 include("em_functions.jl")
+include("connectedcomponents.jl")
 include("clustering_functions.jl")
 include("weight_functions.jl")
 include("maximization_functions.jl")

@@ -31,7 +31,7 @@ function map_solver{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
         currmrows = newmrows
         currmcols = newmcols
     end
-    println("Maximum number of iterations reached")
+    warn("Maximum number of iterations reached")
     return currmrows, currmcols, pM, pU, iter
 end
 
@@ -68,7 +68,7 @@ function map_solver_initialize{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
         currmrows = newmrows
         currmcols = newmcols
     end
-    println("Maximum number of iterations reached")
+    warn("Maximum number of iterations reached")
     return currmrows, currmcols, pM, pU, iter
 end
 
@@ -105,7 +105,7 @@ function map_solver_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
         currmrows = newmrows
         currmcols = newmcols
     end
-    println("Maximum number of iterations reached")
+    warn("Maximum number of iterations reached")
     return currmrows, currmcols, pM, pU, iter
 end
 
@@ -152,7 +152,7 @@ function map_solver_auction{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
         pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
         
     end
-    println("Maximum number of iterations reached")
+    warn("Maximum number of iterations reached")
     return mrows, mcols, pM, pU, iter
 end
 
@@ -184,8 +184,9 @@ function map_solver_auction_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G,
         iter += 1
         if verbose
             println("Iteration: $iter, Matches: $(length(mrows))")
+            println("prevcounts: $prevcounts")
         end
-        println("prevcounts: $prevcounts")
+        
         #solve new problem
         mrows, mcols, r2c, c2r, rowCosts, colCosts, prevw, prevmargin = max_C_auction_cluster(pM, pU, compsum, r2c, c2r, rowCosts, colCosts, prevw, prevmargin, penalty, εscale, verbose = verbose)
 
@@ -200,6 +201,6 @@ function map_solver_auction_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G,
         pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
         
     end
-    println("Maximum number of iterations reached")
+    warn("Maximum number of iterations reached")
     return mrows, mcols, pM, pU, iter
 end
