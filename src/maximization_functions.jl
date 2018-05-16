@@ -245,6 +245,11 @@ function max_C_cluster2{T <: AbstractFloat}(pM::Array{T, 1},
 
     concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
 
+    if verbose
+        maxsize = maximum(concomp.rowcounts[2:end] .* concomp.colcounts[2:end])
+        println("Maximum Cluster Size: $maxsize")
+    end
+    
     ##Compute cost matrix
     costs, maxcost = compute_costs(pM, pU, compsum, penalty)
     rows2cols = zeros(Int64, compsum.nrow)
@@ -301,6 +306,11 @@ function max_C_cluster{T <: AbstractFloat}(pM::Array{T, 1},
         end
     end
 
+    if verbose
+        maxsize = maximum(concomp.rowcounts[2:end] .* concomp.colcounts[2:end])
+        println("Maximum Cluster Size: $maxsize")
+    end
+    
     ##Compute cost matrix
     costs, maxcost = compute_costs(pM, pU, compsum, penalty)
     rows2cols = zeros(Int64, compsum.nrow)
@@ -420,29 +430,17 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     
     ##Compute weights
     w = penalized_weights_vector(pM, pU, compsum, penalty)
-    weightMat = dropzeros(sparse(weights_matrix(w, compsum)))
+    weightMat = penalized_weights_matrix(w, compsum)
     rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
     
     ##Run clustering algorithm to split LSAP
-    #aboveThreshold = indicator_weights_matrix(pM, pU, compsum, penalty)
-    #if typeof(compsum) <: ComparisonSummary
-        #rowLabels, colLabels, maxLabel = bipartite_cluster(aboveThreshold)
-        #rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat, penalty)
-    #elseif typeof(compsum) <: SparseComparisonSummary
-        #rowLabels, colLabels, maxLabel = bipartite_cluster_sparseblock(aboveThreshold)
-        #rowLabels, colLabels, maxLabel = bipartite_cluster_sparseblock(weightMat, penalty)
-    #else
-        #error("Unexpected type for compsum")
-    #end
-
-    #ConnectedComponents(rowLabels, colLabels, maxLabel)
     concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
     
     ##Find cluster indexes
-    #rowCounts = counts(rowLabels) #off by one because zero is included as a label
-    #colCounts = counts(colLabels) #off by one because zero is included as a label
-    #rowperm = sortperm(rowLabels)
-    #colperm = sortperm(colLabels)
+    if verbose
+        maxsize = maximum(concomp.rowcounts[2:end] .* concomp.colcounts[2:end])
+        println("Maximum Cluster Size: $maxsize")
+    end
     
     #Determine error levels for complete assignment
     margin = minimum_margin(w)
@@ -453,23 +451,10 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     c2r = zeros(Int64, compsum.ncol)
     rowCosts = zeros(T, compsum.nrow)
     colCosts = zeros(T, compsum.ncol)
-    #rowstart = rowCounts[1] + 1
-    #colstart = colCounts[1] + 1
     for kk in 1:maxLabel
-
-        #Define cluster quantities
-        #rct = rowCounts[kk + 1]
-        #cct = colCounts[kk + 1]
-        #rrng = range(rowstart, rct)
-        #crng = range(colstart, cct)
-        #clusterRows = rowperm[rrng]
-        #clusterCols = colperm[crng]
-        #rowstart += rct
-        #colstart += cct
 
         clusterRows, clusterCols = get_component(kk, concomp)
         rct, cct = get_dimensions(kk, concomp)
-        #clusterRows, clusterCols = get_component(kk, ConComp)
         
         #Set precision for cluster
         εfinal = margin / min(rct, cct)
@@ -487,13 +472,6 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
         
             #Run auction algorithm
             r2c[clusterRows], c2r[clusterCols], rowCosts[clusterRows], colCosts[clusterCols], λ = scaling_forward_backward(full(weightMat[clusterRows, clusterCols]), ε0, εfinal, εscale, check = true)
-            #if typeof(compsum) <: ComparisonSummary
-            #    r2c[clusterRows], c2r[clusterCols], rowCosts[clusterRows], colCosts[clusterCols], λ = scaling_forward_backward(weightMat[clusterRows, clusterCols], ε0, εfinal, εscale, check = true)
-            #elseif typeof(compsum) <: SparseComparisonSummary
-            #    r2c[clusterRows], c2r[clusterCols], rowCosts[clusterRows], colCosts[clusterCols], λ = scaling_forward_backward(full(weightMat[clusterRows, clusterCols]), ε0, εfinal, εscale, check = true)
-            #else
-            #    error("Unexpected type for compsum")
-            #end
 
             #Map from subset rows / columns to actual
             for ii in clusterRows
@@ -506,9 +484,6 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
                     c2r[jj] = clusterRows[c2r[jj]]
                 end
             end
-        #for (outidx, permidx) in enumerate(rrng)
-        #    r2c[rowperm[permidx]] = r2c[outidx]
-        #end
         end
     end
     
@@ -537,10 +512,15 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     
     ##Run clustering algorithm to split LSAP
     w = penalized_weights_vector(pM, pU, compsum, penalty)
-    weightMat = dropzeros(sparse(weights_matrix(w, compsum)))
+    weightMat = penalized_weights_matrix(w, compsum)
     rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
     concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
 
+    if verbose
+        maxsize = maximum(concomp.rowcounts[2:end] .* concomp.colcounts[2:end])
+        println("Maximum Cluster Size: $maxsize")
+    end
+    
     #Determine error levels for complete assignment
     mininc, maxinc = extrema(w - prevw)
     maxmove = maxinc - mininc
@@ -550,6 +530,10 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     ##Loop over clusters
     for kk in 1:maxLabel
 
+        if verbose
+            println("Cluster: $kk of $maxLabel")
+        end
+        
         #Define cluster quantities        
         clusterRows, clusterCols = get_component(kk, concomp)
         rct, cct = get_dimensions(kk, concomp)

@@ -469,7 +469,7 @@ end
 
 function map_solver_search_auction_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
                                                                           pU0::Array{G, 1},
-                                                                          compsum::ComparisonSummary{<:Integer, <:Integer},
+                                                                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                                           priorM::Array{T, 1},
                                                                           priorU::Array{T, 1},
                                                                           penalty0::Real = 0.0,
@@ -492,12 +492,19 @@ function map_solver_search_auction_cluster{G <: AbstractFloat, T <: Real}(pM0::A
     outMatches = Dict{Int,Tuple{Array{Int,1},Array{Int,1}}}()
 
     #Solver for first value
-    mrows, mcols, r2c, c2r, rowCosts, colCosts, prevw, prevmargin = max_C_auction_cluster(pM0, pU0, compsum, penalty, εscale)
+    mrows, mcols, r2c, c2r, rowCosts, colCosts, prevw, prevmargin = max_C_auction_cluster(pM0, pU0, compsum, penalty, εscale, verbose = verbose)
     pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
 
     #track match counts for convergence
     prevcounts = counts_matches(mrows, mcols, compsum)[1]
     nabove = count(weights_vector(pM, pU, compsum) .> penalty)
+
+    if logflag
+        open(logfile, "a") do f
+            write(f, Dates.format(now(), "yyyy-mm-dd HH:MM:SS"), "\n")
+            write(f, "penalty: $penalty\n")
+        end
+    end
     
     ii = 0
     while nabove > 1
@@ -506,8 +513,14 @@ function map_solver_search_auction_cluster{G <: AbstractFloat, T <: Real}(pM0::A
         while iter < maxIter
             iter += 1
 
+            if logflag
+                open(logfile, "a") do f
+                    write(f, Dates.format(now(), "yyyy-mm-dd HH:MM:SS"), "; Iteration: $iter, matches: $(length(mrows))\n")
+                end
+            end
+            
             #solve new problem
-            mrows, mcols, r2c, c2r, rowCosts, colCosts, prevw, prevmargin = max_C_auction_cluster(pM, pU, compsum, r2c, c2r, rowCosts, colCosts, prevw, prevmargin, penalty, εscale)
+            mrows, mcols, r2c, c2r, rowCosts, colCosts, prevw, prevmargin = max_C_auction_cluster(pM, pU, compsum, r2c, c2r, rowCosts, colCosts, prevw, prevmargin, penalty, εscale, verbose = verbose)
 
             #check convergence
             matchcounts = counts_matches(mrows, mcols, compsum)[1]

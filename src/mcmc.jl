@@ -527,27 +527,12 @@ function mh_gibbs_count_inplace{T <: Real}(
 
             #Loop over blocks
             for kk in 1:nblocks
-                #if C.row2col[7] != 17 && C.row2col[7] != 0
-                #    r = C.row2col[7]
-                #    error("1 illegal move block number $kk iteration $ii delta: $countdelta 7 linked to $r")
-                #end
                 move = false
                 countdelta = zeros(matchcounts)
                 if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                    #println("gibbs $kk")
                     countdelta, move = singleton_gibbs!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                    #if C.row2col[7] != 17 && C.row2col[7] != 0
-                    #    r = C.row2col[7]
-                    #    error("2 illegal move block number $kk iteration $ii delta: $countdelta 7 linked to $r")
-                    #end
                 else
-                    #println("informed")
                     countdelta, move = transitionC!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                    #if C.row2col[7] != 17 && C.row2col[7] != 0
-                    #    r = C.row2col[7]
-                    #    error("2b illegal move block number $kk iteration $ii delta: $countdelta 7 linked to $r")
-                    #end
-
                 end
                 if move
                     transC[kk] += 1
@@ -555,21 +540,12 @@ function mh_gibbs_count_inplace{T <: Real}(
                 end
             end #end block loop
 
-            #if C.row2col[7] != 17 && C.row2col[7] != 0
-            #    r = C.row2col[7]
-            #    error("3 illegal move block number $kk iteration $ii delta: $countdelta 7 linked to $r")
-            #end
             ##Perform Gibbs update if performed with inner iterations
             if gibbsInner
                 pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
                 logDiff = log.(pM) - log.(pU)
                 loglikMargin = countDeltas' * logDiff
             end
-
-            #if C.row2col[7] != 17 && C.row2col[7] != 0
-            #    r = C.row2col[7]
-            #    error("4 illegal move block number $kk iteration $ii delta: $countdelta 7 linked to $r")
-            #end
         end
 
         ##Perform Gibbs update if performed with outer iterations
@@ -579,11 +555,6 @@ function mh_gibbs_count_inplace{T <: Real}(
             loglikMargin = countDeltas' * logDiff
         end
 
-        #if C.row2col[7] != 17 && C.row2col[7] != 0
-        #    r = C.row2col[7]
-        #    error("5 illegal move block number $kk iteration $ii delta: $countdelta 7 linked to $r")
-        #end
-        
         #Add states to chain
         if sparseLinks
             for (row, col) in zip(findnz(C.row2col)...)
@@ -597,11 +568,6 @@ function mh_gibbs_count_inplace{T <: Real}(
             end
         end
 
-        #if C.row2col[7] != 17 && C.row2col[7] != 0
-        #    r = C.row2col[7]
-        #    error("6 illegal move block number $kk iteration $ii delta: $countdelta 7 linked to $r")
-        #end
-        
         nlinkArray[ii] = C.nlink
         MArray[:, ii] = pM
         UArray[:, ii] = pU
