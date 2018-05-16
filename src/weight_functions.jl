@@ -204,37 +204,68 @@ Calculation is done efficiently by computing the weight once for each observed
 comparison and then mapping based on the storred array indicies.  Missing values do not
 contribute to the weights assuming ignorability.
 """
-function penalized_weights_matrix{T <: AbstractFloat}(pM::Array{T, 1},
-                                                      pU::Array{T, 1},
-                                                      compsum::ComparisonSummary,
-                                                      penalty::AbstractFloat = 0.0)
+function penalized_weights_matrix{T <: Real}(pweightvec::Array{T, 1}, compsum::ComparisonSummary)
+    positiveweight = pweightvec .> zero(T)
+    n = sum(compsum.obsvecct[positiveweight])
+    
+    rows = Array{Int64}(n)
+    cols = Array{Int64}(n)
+    pweights = Array{T}(n)
+
+    ii = 0
+    
+    for col in 1:compsum.ncol
+        for row in 1:compsum.nrow
+            if positiveweight[compsum.obsidx[row, col]]
+                ii += 1
+                rows[ii] = row
+                cols[ii] = col
+                pweights[ii] = pweightvec[compsum.obsidx[row, col]]
+            end
+        end
+    end
+
+    return sparse(rows[1:ii], cols[1:ii], pweights[1:ii], compsum.nrow, compsum.ncol)
+end
+
+function penalized_weights_matrix{T <: Real}(pweightvec::Array{T, 1}, compsum::SparseComparisonSummary)
+    positiveweight = pweightvec .> zero(T)
+    n = sum(compsum.obsvecct[positiveweight])
+
+    idxvals = nonzeros(compsum.obsidx)
+    idxrows = rowvals(compsum.obsidx)
+    
+    rows = Array{Int64}(n)
+    cols = Array{Int64}(n)
+    pweights = Array{T}(n)
+
+    ii = 0
+    
+    for jj in 1:compsum.ncol
+        for matidx in nzrange(compsum.obsidx, jj)
+            if positiveweight[idxvals[matidx]]
+                ii += 1
+                rows[ii] = idxrows[matidx]
+                cols[ii] = jj
+                pweights[ii] = pweightvec[idxvals[matidx]]
+            end
+        end
+    end
+
+    return sparse(rows[1:ii], cols[1:ii], pweights[1:ii], compsum.nrow, compsum.ncol)
+end
+
+function penalized_weights_matrix{T <: AbstractFloat}(weightvec::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::AbstractFloat)
+    pweightvec = max.(weightvec .- penalty, 0.0)
+    return penalized_weights_matrix(pweightvec, compsum)
+end
+
+function penalized_weights_matrix{T <: AbstractFloat}(pM::Array{T, 1}, pU::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::AbstractFloat = 0.0)
     weightvec = weights_vector(pM, pU, compsum)
     pweightvec = max.(weightvec .- penalty, 0.0)
-    return pweightvec[compsum.obsidx]
+    return penalized_weights_matrix(pweightvec, compsum)
 end
 
-function penalized_weights_matrix{T <: AbstractFloat}(pM::Array{T, 1},
-                                                      pU::Array{T, 1},
-                                                      compsum::SparseComparisonSummary,
-                                                      penalty::AbstractFloat = 0.0)
-    weightvec = weights_vector(pM, pU, compsum)
-    pweightvec = max.(weightvec .- penalty, 0.0)
-    return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, pweightvec[compsum.obsidx.nzval])
-end
-
-function penalized_weights_matrix{T <: AbstractFloat}(weightvec::Array{T, 1},
-                                                      compsum::ComparisonSummary,
-                                                      penalty::AbstractFloat = 0.0)
-    pweightvec = max.(weightvec .- penalty, 0.0)
-    return pweightvec[compsum.obsidx]
-end
-
-function penalized_weights_matrix{T <: AbstractFloat}(weightvec::Array{T, 1},
-                                                      compsum::SparseComparisonSummary,
-                                                      penalty::AbstractFloat = 0.0)
-    pweightvec = max.(weightvec .- penalty, 0.0)
-    return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, pweightvec[compsum.obsidx.nzval])
-end
 
 """
     indicator_weights_matrix(pM, pU, comparisonSummary) -> boolArray
