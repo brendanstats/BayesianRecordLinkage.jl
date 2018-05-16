@@ -1,3 +1,26 @@
+get_loglik{G <: Integer, T <: AbstractFloat}(row::G, col::G, compsum::ComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -10.0) = loglikMargin[compsum.obsidx[row, col]]
+
+function get_loglik{G <: Integer, T <: AbstractFloat}(row::G, col::G, compsum::SparseComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -10.0)
+    if iszero(compsum.obsidx[row, col])
+        return loglikMissing
+    else
+        return loglikMargin[compsum.obsidx[row, col]]
+    end
+end
+
+get_counts{G <: Integer, T <: Integer}(row::G, col::G, compsum::ComparisonSummary, countDeltas::Array{T, 2}) = countDeltas[:, compsum.obsidx[row, col]]
+
+
+function get_counts{G <: Integer, T <: Integer}(row::G, col::G, compsum::SparseComparisonSummary, countDeltas::Array{T, 2})
+    if iszero(compsum.obsidx[row, col])
+        return zeros(T, size(countDeltas, 1))
+    else
+        return countDeltas[:, compsum.obsidx[row, col]]
+    end
+end
+
+
+
 """
     locbal_kernel_move!(row, column, LinkMatrix) -> MovedLinkMatrix
 
@@ -72,26 +95,26 @@ function randomwalk1_countdelta{T <: Integer}(row::T, col::T,
                                             countDeltas::Array{<:Integer, 2})
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
+            countdelta = get_counts(row, col, compsum, countDeltas)
             return countdelta, 1
         else ##single switch move I
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[C.col2row[col], col]]
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
             return countdelta, 2
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[row, C.row2col[row]]]
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
             return countdelta, 3
         elseif C.col2row[col] == row ##delete move
-            countdelta = -countDeltas[:, compsum.obsidx[row, col]]
+            countdelta = -get_counts(row, col, compsum, countDeltas)
             return countdelta, 4
         else ##double switch move
             rowalt = C.col2row[col]
             colalt = C.row2col[row]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
-            countdelta += countDeltas[:, compsum.obsidx[rowalt, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[row, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[rowalt, col]]
+            countdelta = get_counts(row, col, compsum, countDeltas)
+            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
+            countdelta -= get_counts(row, colalt, compsum, countDeltas)
+            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
             return countdelta, 5
         end
     end
@@ -106,26 +129,26 @@ function randomwalk1_loglikdelta{T <: Integer}(row::T, col::T,
                                                loglikMargin::Array{<:AbstractFloat, 1})
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
             return loglikdelta, 1
         else ##single switch move I
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]] - loglikMargin[compsum.obsidx[C.col2row[col], col]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(C.col2row[col], col, compsum, loglikMargin)
             return loglikdelta, 2
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]] - loglikMargin[compsum.obsidx[row, C.row2col[row]]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(row, C.row2col[row], compsum, loglikMargin)
             return loglikdelta, 3
         elseif C.col2row[col] == row ##delete move
-            loglikdelta = -loglikMargin[compsum.obsidx[row, col]]
+            loglikdelta = -get_loglik(row, col, compsum, loglikMargin)
             return loglikdelta, 4
         else ##double switch move
             rowalt = C.col2row[col]
             colalt = C.row2col[row]
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]]
-            loglikdelta += loglikMargin[compsum.obsidx[rowalt, colalt]]
-            loglikdelta -= loglikMargin[compsum.obsidx[row, colalt]]
-            loglikdelta -= loglikMargin[compsum.obsidx[rowalt, col]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
+            loglikdelta += get_loglik(rowalt, colalt, compsum, loglikMargin)
+            loglikdelta -= get_loglik(row, colalt, compsum, loglikMargin)
+            loglikdelta -= get_loglik(rowalt, col, compsum, loglikMargin)
             return loglikdelta, 5
         end
     end
@@ -141,34 +164,37 @@ function randomwalk1_countobsdelta{T <: Integer}(row::T, col::T,
                                                  obsDeltas::Array{<:Integer, 2})
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]]
+            countdelta = get_counts(row, col, compsum, countDeltas)
+            obsdelta = get_counts(row, col, compsum, obsDeltas)
             return countdelta, obsdelta, 1
         else ##single switch move I
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[C.col2row[col], col]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]] - obsDeltas[:, compsum.obsidx[C.col2row[col], col]]
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
+            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(C.col2row[col], col, compsum, obsDeltas)
             return countdelta, obsdelta, 2
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[row, C.row2col[row]]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]] - obsDeltas[:, compsum.obsidx[row, C.row2col[row]]]
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
+            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(row, C.row2col[row], compsum, obsDeltas)
             return countdelta, obsdelta, 3
         elseif C.col2row[col] == row ##delete move
-            countdelta = -countDeltas[:, compsum.obsidx[row, col]]
-            obsdelta = -obsDeltas[:, compsum.obsidx[row, col]]
+            countdelta = -get_counts(row, col, compsum, countDeltas)
+            obsdelta = -get_counts(row, col, compsum, obsDeltas)
             return countdelta, obsdelta, 4
         else ##double switch move
             rowalt = C.col2row[col]
             colalt = C.row2col[row]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
-            countdelta += countDeltas[:, compsum.obsidx[rowalt, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[row, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[rowalt, col]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]]
-            obsdelta += obsDeltas[:, compsum.obsidx[rowalt, colalt]]
-            obsdelta -= obsDeltas[:, compsum.obsidx[row, colalt]]
-            obsdelta -= obsDeltas[:, compsum.obsidx[rowalt, col]]
+
+            countdelta = get_counts(row, col, compsum, countDeltas)
+            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
+            countdelta -= get_counts(row, colalt, compsum, countDeltas)
+            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
+            
+            obsdelta = get_counts(row, col, compsum, obsDeltas)
+            obsdelta += get_counts(rowalt, colalt, compsum, obsDeltas)
+            obsdelta -= get_counts(row, colalt, compsum, obsDeltas)
+            obsdelta -= get_counts(rowalt, col, compsum, obsDeltas)
+            
             return countdelta, obsdelta, 5
         end
     end
@@ -184,34 +210,37 @@ function randomwalk1_loglikcountdelta{T <: Integer}(row::T, col::T,
                                                        countDeltas::Array{<:Integer, 2})
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
+            countdelta = get_counts(row, col, compsum, countDeltas)
             return loglikdelta, countdelta, 1
         else ##single switch move I
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]] - loglikMargin[compsum.obsidx[C.col2row[col], col]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[C.col2row[col], col]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(C.col2row[col], col, compsum, loglikMargin)
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
             return loglikdelta, countdelta, 2
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]] - loglikMargin[compsum.obsidx[row, C.row2col[row]]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[row, C.row2col[row]]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(row, C.row2col[row], compsum, loglikMargin)
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
             return loglikdelta, countdelta, 3
         elseif C.col2row[col] == row ##delete move
-            loglikdelta = -loglikMargin[compsum.obsidx[row, col]]
-            countdelta = -countDeltas[:, compsum.obsidx[row, col]]
+            loglikdelta = -get_loglik(row, col, compsum, loglikMargin)
+            countdelta = -get_counts(row, col, compsum, countDeltas)
             return loglikdelta, countdelta, 4
         else ##double switch move
             rowalt = C.col2row[col]
             colalt = C.row2col[row]
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]]
-            loglikdelta += loglikMargin[compsum.obsidx[rowalt, colalt]]
-            loglikdelta -= loglikMargin[compsum.obsidx[row, colalt]]
-            loglikdelta -= loglikMargin[compsum.obsidx[rowalt, col]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
-            countdelta += countDeltas[:, compsum.obsidx[rowalt, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[row, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[rowalt, col]]
+            
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
+            loglikdelta += get_loglik(rowalt, colalt, compsum, loglikMargin)
+            loglikdelta -= get_loglik(row, colalt, compsum, loglikMargin)
+            loglikdelta -= get_loglik(rowalt, col, compsum, loglikMargin)
+            
+            countdelta = get_counts(row, col, compsum, countDeltas)
+            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
+            countdelta -= get_counts(row, colalt, compsum, countDeltas)
+            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
+            
             return loglikdelta, countdelta, 5
         end
     end
@@ -228,42 +257,46 @@ function randomwalk1_loglikcountobsdelta{T <: Integer}(row::T, col::T,
                                                        obsDeltas::Array{<:Integer, 2})
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
+            countdelta = get_counts(row, col, compsum, countDeltas)
+            obsdelta = get_counts(row, col, compsum, obsDeltas)
             return loglikdelta, countdelta, obsdelta, 1
         else ##single switch move I
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]] - loglikMargin[compsum.obsidx[C.col2row[col], col]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[C.col2row[col], col]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]] - obsDeltas[:, compsum.obsidx[C.col2row[col], col]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(C.col2row[col], col, compsum, loglikMargin)
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
+            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(C.col2row[col], col, compsum, obsDeltas)
             return loglikdelta, countdelta, obsdelta, 2
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]] - loglikMargin[compsum.obsidx[row, C.row2col[row]]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[row, C.row2col[row]]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]] - obsDeltas[:, compsum.obsidx[row, C.row2col[row]]]
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(row, C.row2col[row], compsum, loglikMargin)
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
+            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(row, C.row2col[row], compsum, obsDeltas)
             return loglikdelta, countdelta, obsdelta, 3
         elseif C.col2row[col] == row ##delete move
-            loglikdelta = -loglikMargin[compsum.obsidx[row, col]]
-            countdelta = -countDeltas[:, compsum.obsidx[row, col]]
-            obsdelta = -obsDeltas[:, compsum.obsidx[row, col]]
+            loglikdelta = -get_loglik(row, col, compsum, loglikMargin)
+            countdelta = -get_counts(row, col, compsum, countDeltas)
+            obsdelta = -get_counts(row, col, compsum, obsDeltas)
             return loglikdelta, countdelta, obsdelta, 4
         else ##double switch move
             rowalt = C.col2row[col]
             colalt = C.row2col[row]
-            loglikdelta = loglikMargin[compsum.obsidx[row, col]]
-            loglikdelta += loglikMargin[compsum.obsidx[rowalt, colalt]]
-            loglikdelta -= loglikMargin[compsum.obsidx[row, colalt]]
-            loglikdelta -= loglikMargin[compsum.obsidx[rowalt, col]]
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
-            countdelta += countDeltas[:, compsum.obsidx[rowalt, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[row, colalt]]
-            countdelta -= countDeltas[:, compsum.obsidx[rowalt, col]]
-            obsdelta = obsDeltas[:, compsum.obsidx[row, col]]
-            obsdelta += obsDeltas[:, compsum.obsidx[rowalt, colalt]]
-            obsdelta -= obsDeltas[:, compsum.obsidx[row, colalt]]
-            obsdelta -= obsDeltas[:, compsum.obsidx[rowalt, col]]
+            
+            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
+            loglikdelta += get_loglik(rowalt, colalt, compsum, loglikMargin)
+            loglikdelta -= get_loglik(row, colalt, compsum, loglikMargin)
+            loglikdelta -= get_loglik(rowalt, col, compsum, loglikMargin)
+            
+            countdelta = get_counts(row, col, compsum, countDeltas)
+            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
+            countdelta -= get_counts(row, colalt, compsum, countDeltas)
+            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
+            
+            obsdelta = get_counts(row, col, compsum, obsDeltas)
+            obsdelta += get_counts(rowalt, colalt, compsum, obsDeltas)
+            obsdelta -= get_counts(row, colalt, compsum, obsDeltas)
+            obsdelta -= get_counts(rowalt, col, compsum, obsDeltas)
+            
             return loglikdelta, countdelta, obsdelta, 5
         end
     end
@@ -990,7 +1023,7 @@ function randomwalk2_countdelta{T <: Integer}(row::T, col::T,
     countdelta = zeros(eltype(countDeltas), size(countDeltas, 1))
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            countdelta = countDeltas[:, compsum.obsidx[row, col]]
+            countdelta = get_counts(row, col, compsum, countDeltas)
             return countdelta, 1
         else ##single switch move I
             warn("incorrect draw for randomwalk 2")
@@ -998,10 +1031,10 @@ function randomwalk2_countdelta{T <: Integer}(row::T, col::T,
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            countdelta = countDeltas[:, compsum.obsidx[row, col]] - countDeltas[:, compsum.obsidx[row, C.row2col[row]]]
+            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
             return countdelta, 3
         elseif C.col2row[col] == row ##delete move
-            countdelta = -countDeltas[:, compsum.obsidx[row, col]]
+            countdelta = -get_counts(row, col, compsum, countDeltas)
             return countdelta, 2
         else ##double switch move
             warn("incorrect draw for randomwalk 2 (double switch)")
