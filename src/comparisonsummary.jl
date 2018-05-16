@@ -126,9 +126,9 @@ function comparison_variables{G <: Integer}(rows::Array{Int64, 1}, cols::Array{I
 
     obsidxvec = Array{idxType}(size(comparisons, 1))
     obsvecct = Array{Int64}(0) 
-    idxDict = Dict{Array{obsType, 1}, Int64}()
+    idxDict = Dict{Array{G, 1}, Int64}()
     for ii in 1:size(comparisons, 1)
-        obsvec = obsType.(comparisons[ii, :])
+        obsvec = comparisons[ii, :]
         if haskey(idxDict, obsvec)
             idx = idxDict[obsvec]
             obsidxvec[ii] = idx
@@ -155,9 +155,9 @@ function comparison_variables{G <: Integer}(comparisons::Array{G, 2}, nrow::Int6
 
     obsidxvec = Array{idxType}(size(comparisons, 1))
     obsvecct = Array{Int64}(0) 
-    idxDict = Dict{Array{obsType, 1}, Int64}()
+    idxDict = Dict{Array{G, 1}, Int64}()
     for ii in 1:size(comparisons, 1)
-        obsvec = obsType.(comparisons[ii, 3:end])
+        obsvec = comparisons[ii, 3:end]
         if haskey(idxDict, obsvec)
             idx = idxDict[obsvec]
             obsidxvec[ii] = idx
@@ -180,25 +180,83 @@ function comparison_variables{G <: Integer}(comparisons::Array{G, 2}, nrow::Int6
     return obsidx, obsvecs, obsvecct
 end
 
-function comparison_variables(filenames::Array{String, 1}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = Int64, obsType::DataType = Int8, header::Bool = true, sep::Char = 't')
+function comparison_variables(filenames::Array{String, 1}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = Int64, obsType::DataType = Int8, header::Bool = true, sep::Char = '\t', verbose::Bool = true)
+
+    nlines = mapreduce(countlines, +, filenames)
+    if header
+        nlines -= length(filenames)
+    end
+    
+    rows = Array{Int64}(nlines)
+    cols = Array{Int64}(nlines)
+    obsidxvec = Array{idxType}(nlines)
 
     obsvecct = Array{Int64}(0) 
-    idxDict = Dict{Array{obsType, 1}, Int64}()
-    obsidx = sparse(Int64[], Int64[], idxType[], nrow, ncol)
+    idxDict = Dict{Array{Int64, 1}, Int64}()
     
+    idx = 0
     for f in filenames
+
+        if verbose
+            println(f)
+        end
         
         ##read in file
         if header
-            comparisons = readdlm(f, sep, idxType, header = header)[1]
+            comp = readdlm(f, sep, Int64, header = header)[1]
         else
-            comparisons = readdlm(f, sep, idxType, header = header)
+            comp = readdlm(f, sep, Int64, header = header)
+        end
+        
+        for ii in 1:size(comp, 1)
+            idx += 1
+            rows[idx] = comp[ii, 1]
+            cols[idx] = comp[ii, 2]
+            obsvec = comp[ii, 3:end]
+            if haskey(idxDict, obsvec)
+                compid = idxDict[obsvec]
+                obsidxvec[idx] = compid
+                obsvecct[compid] += 1
+            else
+                push!(obsvecct, 1)
+                idxDict[obsvec] = length(obsvecct)
+                obsidxvec[idx] = length(obsvecct)
+            end
+        end
+    end
+    println(nlines)
+    println(idx)
+    println(maximum(rows))
+    println(maximum(cols))
+    
+    obsidx = sparse(rows, cols, obsidxvec, nrow, ncol)
+
+    rows = true
+    cols = true
+    obsidxvec = true
+    
+    #=
+    obsvecct = Array{Int64}(0) 
+    idxDict = Dict{Array{Int64, 1}, Int64}()
+    obsidx = sparse(Int64[], Int64[], idxType[], nrow, ncol)
+    
+    for f in filenames
+
+        if verbose
+            println(f)
+        end
+                    
+        ##read in file
+        if header
+            comparisons = readdlm(f, sep, Int64, header = header)[1]
+        else
+            comparisons = readdlm(f, sep, Int64, header = header)
         end
 
         ##add contents to file
         obsidxvec = Array{idxType}(size(comparisons, 1))
         for ii in 1:size(comparisons, 1)
-            obsvec = obsType.(comparisons[ii, 3:end])
+            obsvec = comparisons[ii, 3:end]
             if haskey(idxDict, obsvec)
                 idx = idxDict[obsvec]
                 obsidxvec[ii] = idx
@@ -212,15 +270,91 @@ function comparison_variables(filenames::Array{String, 1}, nrow::Int64, ncol::In
 
         rows = comparisons[:, 1]
         cols = comparisons[:, 2]
-        for (row, col, idx) in zip(rows, cols, obsidxvec)
-            if iszero(obsidx[row, col])
-                obsidx[row, col] = idx
+        keep = trues(length(rows))
+        for ii in length(rows)
+            if !iszero(obsidx[rows[ii], cols[ii]])
+                keep[ii] = false
+            end
+        end
+        obsidx += sparse(rows[keep], cols[keep], obsidxvec[keep], nrow, ncol)
+        #@time for (row, col, idx) in zip(rows, cols, obsidxvec)
+        #    @time if iszero(obsidx[row, col])
+        #        @time obsidx[row, col] = idx
+        #    else
+        #        if obsidx[row, col] != idx
+        #            warn("multiple comparison vectors compute for row: $row and col: $col")
+        #        end
+        #    end
+        #end
+    end
+    =#
+    obsvecs = Array{obsType}(ncomp, maximum(values(idxDict)))
+    for (key, value) in idxDict
+        obsvecs[:, value] = key
+    end
+    
+    return obsidx, obsvecs, obsvecct
+end
+
+
+function comparison_variables(namelist::Array{Array{String, 1}, 1}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = Int64, obsType::DataType = Int8, header::Bool = true, sep::Char = 't', verbose::Bool = true)
+
+    if length(namelist) == 1
+        return comparison_variables(namelist[1], nrow, ncol, ncomp, idxType = idxType, obsTypeobsType, header = header, sep = sep, verbose = verbose)
+    end
+
+    obsvecct = Array{Int64}(0) 
+    idxDict = Dict{Array{Int64, 1}, Int64}()
+    obsidx = sparse(Int64[], Int64[], idxType[], nrow, ncol)
+    
+    for filenames in namelist
+
+        ##List specific variables
+        nlines = mapreduce(countlines, +, filenames)
+        if header
+            nlines -= length(filenames)
+        end
+        rows = Array{Int64}(nlines)
+        cols = Array{Int64}(nlines)
+        obsidxvec = Array{idxType}(nlines)
+
+        idx = 0
+        for f in filenames
+            
+            if verbose
+                println(f)
+            end
+            
+            ##read in file
+            if header
+                comp = readdlm(f, sep, Int64, header = header)[1]
             else
-                if obsidx[row, col] != idx
-                    warn("multiple comparison vectors compute for row: $row and col: $col")
+                comp = readdlm(f, sep, Int64, header = header)
+            end
+            
+            for ii in 1:size(comp, 1)
+                idx += 1
+                rows[idx] = comp[ii, 1]
+                cols[idx] = comp[ii, 2]
+                obsvec = comp[ii, 3:end]
+                if haskey(idxDict, obsvec)
+                    compid = idxDict[obsvec]
+                    obsidxvec[idx] = compid
+                    obsvecct[compid] += 1
+                else
+                    push!(obsvecct, 1)
+                    idxDict[obsvec] = length(obsvecct)
+                    obsidxvec[idx] = length(obsvecct)
                 end
             end
         end
+        keep = trues(length(rows))
+        for ii in length(rows)
+            if !iszero(obsidx[rows[ii], cols[ii]])
+                keep[ii] = false
+            end
+        end
+        obsidx += sparse(rows[keep], cols[keep], obsidxvec[keep], nrow, ncol)
     end
     
     obsvecs = Array{obsType}(ncomp, maximum(values(idxDict)))
@@ -395,6 +529,17 @@ function SparseComparisonSummary(filenames::Array{String, 1}, nrow::Int64, ncol:
     return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
 end
 
+function SparseComparisonSummary(filenames::Array{Array{String, 1}, 1}, nrow::Int64, ncol::Int64, nlevels::Array{Int64, 1}; idxType::DataType = Int64, obsType::DataType = Int8, header::Bool = true, sep::Char = '\t')
+
+    ##Mapping variables
+    ncomp = length(nlevels)
+    cmap, levelmap, cadj = mapping_variables(nlevels)
+    obsidx, obsvecs, obsvecct = comparison_variables(filenames, nrow, ncol, ncomp, idxType = idxType, obsType = obsType, header = header, sep = sep)
+    npairs, counts, obsct, misct = count_variables(obsidx, obsvecs, obsvecct, cmap, cadj)
+
+    return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
+end
+
 function extract_integers(s::String, nobs::Integer, idxType::DataType, obsType::DataType, sep::Char)
     obs = Array{obsType}(nobs)
     idx1 = start(s)
@@ -506,16 +651,19 @@ function merge_comparisonsummary(CS1::SparseComparisonSummary, CS2::SparseCompar
     if CS1.ncomp != CS2.ncomp
         error("ncomp (number of comparisons) must match")
     end
-        
+    ncomp = CS1.ncomp
     nlevels = map(1:CS1.ncomp) do ii
         max(CS1.nlevels[ii], CS2.nlevels[ii])
     end
     nrow = max(CS1.nrow, CS2.nrow)
     ncol = max(CS1.ncol, CS2.ncol)
     cmap, levelmap, cadj = mapping_variables(nlevels)
-        
+
+    obsType = eltype(CS1.obsvecs)
+    idxType = eltype(CS1.obsidx)
+    
     ##Map for obsvecs in first comparison summary
-    idxDict = Dict{Array{G, 1}, Int64}()
+    idxDict = Dict{Array{obsType, 1}, idxType}()
     for jj in 1:size(CS1.obsvecs, 2)
         idxDict[CS1.obsvecs[:, jj]] = jj
     end
@@ -523,7 +671,7 @@ function merge_comparisonsummary(CS1::SparseComparisonSummary, CS2::SparseCompar
     ##Map obsvecs in second comparison summary to first
     obsvecs = CS1.obsvecs
     nvecs = size(CS1.obsvecs, 2)
-    oldidx2newidx = zeros(size(CS2.obsvecs, 2))
+    oldidx2newidx = zeros(idxType, size(CS2.obsvecs, 2))
     for jj in 1:size(CS2.obsvecs, 2)
         obsvec = CS2.obsvecs[:, jj]
         if haskey(idxDict, obsvec)
@@ -535,35 +683,35 @@ function merge_comparisonsummary(CS1::SparseComparisonSummary, CS2::SparseCompar
         end
     end
 
-    ##Combine Counts
-    obsvecct = zeros(Int64, nvecs)
-    for ii in 1:length(CS1.obsvecct)
-        obsvecct[ii] = CS1.obsvecct[ii]
-    end
-
-    for ii in 1:length(CS2.obsvecct)
-        obsvecct[oldidx2newidx[ii]] += CS1.obsvecct[ii]
-    end
-
-    npairs, counts, obsct, misct = count_variables(obsidx, obsvecs, obsvecct, cmap, cadj)
-    
-    ##Add observations from second comparison to those of first
-    rows = rowvals(CS2.obsidx)
-    vals = nonzeros(CS2.obsidx)
-    obsidx = CS1.obsidx
-    for jj in 1:CS1.ncol
-        for ii in nzrange(CS2.obsidx)
-            if iszero(obsidx[rows[ii], jj])
-                obsidx[rows[ii], jj] = oldidx2newidx[vals[ii]]
-            else
-                if obsidx[rows[ii], jj] != oldidx2newidx[vals[ii]]
-                    warn("$ii $jj indicies do not match")
-                end
-            end
+    function idx_combine{G <: Real}(x::G, y::G)
+        if x == y
+            return x
+        else
+            return -one(G)
         end
     end
-    npairs = nnz(obsidx)
-    SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, CS1.nlevels, CS1.cmap, CS1.levelmap, CS1.cadj, CS1.nrow, CS1.ncol, npairs, CS1.ncomp)
+    
+    ##Add observations from second comparison to those of first
+    cols = [findnz(CS1.obsidx)[2]; findnz(CS2.obsidx)[2]]
+    rows = [rowvals(CS1.obsidx); rowvals(CS2.obsidx)]
+    vals = [nonzeros(CS1.obsidx); oldidx2newidx[nonzeros(CS2.obsidx)]]
+    obsidx = sparse(rows, cols, vals, nrow, ncol, idx_combine) #combine using minimum since they should match, default is + for duplicates
+
+    println(nnz(obsidx))
+    rows = true
+    cols = true
+    vals = true
+    println(nnz(obsidx))
+
+    ##Combine Counts - must be recomputed from scratch since duplicates will be combined...
+    obsvecct = zeros(Int64, nvecs)
+    for idx in nonzeros(obsidx)
+        obsvecct[idx] += one(Int64)
+    end
+    
+    npairs, counts, obsct, misct = count_variables(obsidx, obsvecs, obsvecct, cmap, cadj)
+    
+    return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
 end
 
 SparseComparisonSummary{G <: Integer}(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::SparseComparisonSummary) =
