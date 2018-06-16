@@ -260,7 +260,7 @@ function max_C_cluster2{T <: AbstractFloat}(pM::Array{T, 1},
             println("Cluster: $kk of $maxLabel")
         end
 
-        assignment = lsap_solver_tracking(costs[clusterRows, clusterCols])[1] #diff
+        assignment = lsap_solver_tracking(full(costs[clusterRows, clusterCols]))[1]
         for (row, colidx) in zip(clusterRows, assignment)
             if !iszero(colidx)
                 rows2cols[row] = clusterCols[colidx]
@@ -355,7 +355,7 @@ function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
     #Determine error levels for complete assignment
     margin = minimum_margin(w)
     ε0 = 0.5 * margin
-    εfinal = margin / min(compsum.nrow, compsum.ncol)
+    εfinal = margin / min(compsum.nrow, compsum.ncol) * εscale
 
     #Solve assignment problem
     r2c, c2r, rowCosts, colCosts, λ = scaling_forward_backward(weightMat, ε0, εfinal, εscale)
@@ -399,7 +399,7 @@ function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
     end
     ε0 = εscale * (prevε + maxmove)
     margin = minimum_margin(w)
-    εfinal = margin / min(compsum.nrow, compsum.ncol)
+    εfinal = margin / min(compsum.nrow, compsum.ncol)  * εscale
     
     #Solve assignment problem
     r2c, c2r, rowCosts, colCosts, λ = scaling_forward_backward(weightMat, rowCosts, colCosts, ε0, εfinal, εscale, λ)
@@ -428,12 +428,10 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
                                                    εscale::AbstractFloat = 0.2;
                                                    verbose::Bool = false)
     
-    ##Compute weights
-    w = penalized_weights_vector(pM, pU, compsum, penalty)
-    weightMat = penalized_weights_matrix(w, compsum)
-    rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
-    
     ##Run clustering algorithm to split LSAP
+    w = penalized_weights_vector(pM, pU, compsum, penalty)
+    weightMat = dropzeros(sparse(penalized_weights_matrix(w, compsum)))
+    rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
     concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
     
     ##Find cluster indexes
@@ -451,13 +449,14 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     c2r = zeros(Int64, compsum.ncol)
     rowCosts = zeros(T, compsum.nrow)
     colCosts = zeros(T, compsum.ncol)
+    
     for kk in 1:maxLabel
 
         clusterRows, clusterCols = get_component(kk, concomp)
         rct, cct = get_dimensions(kk, concomp)
         
         #Set precision for cluster
-        εfinal = margin / min(rct, cct)
+        εfinal = margin / min(rct, cct) * εscale
         
         if verbose
             println("Cluster: $kk of $maxLabel")
@@ -512,7 +511,7 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     
     ##Run clustering algorithm to split LSAP
     w = penalized_weights_vector(pM, pU, compsum, penalty)
-    weightMat = penalized_weights_matrix(w, compsum)
+    weightMat = dropzeros(sparse(penalized_weights_matrix(w, compsum)))
     rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
     concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
 
@@ -598,7 +597,7 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
                 λ = 0.0
             end
             
-            εfinal = margin / min(rct, cct)
+            εfinal = margin / min(rct, cct) * εscale
             λ = max(λ, 0.0)
             if verbose
                 println("Cluster: $kk of $maxLabel")

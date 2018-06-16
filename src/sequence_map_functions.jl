@@ -319,69 +319,6 @@ function map_solver_search_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G, 
     return outMatches, outM', outU', penalties, outIter
 end
 
-function map_solver_search_initialize{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
-                                                                     pU0::Array{G, 1},
-                                                                     compsum::ComparisonSummary{<:Integer, <:Integer},
-                                                                     priorM::Array{T, 1},
-                                                                     priorU::Array{T, 1},
-                                                                     penalty0::Real = 0.0,
-                                                                     mininc::Real = 0.0;
-                                                                     maxIter::Integer = 100,
-                                                                     verbose::Bool = false,
-                                                                     logfile::String = "log.txt",
-                                                                     logflag::Bool = false)
-    ##Modes are found using pseudo counts of αᵢ - 1
-    pseudoM = priorM - ones(T, length(priorM))
-    pseudoU = priorU - ones(T, length(priorU))
-    pM = copy(pM0)
-    pU = copy(pU0)
-    penalty = copy(penalty0)
-    
-    #Solver for first value
-    currmrows, currmcols, rows2cols, rowOffsets, colOffsets, maxcost = max_C_offsets(pM, pU, compsum, penalty)
-    outM = Array{T}(length(pM), 0)
-    outU = Array{T}(length(pU), 0)
-    outIter = Array{Int}(0)
-    penalties = Array{typeof(penalty)}(0)
-    outMatches = Dict{Int,Tuple{Array{Int,1},Array{Int,1}}}()
-
-    nabove = count(weights_vector(pM, pU, compsum) .> penalty)
-    ii = 0
-    while nabove > 1
-        ii += 1
-        iter = 0
-        while iter < maxIter
-            iter += 1
-            pM, pU = max_MU(currmrows, currmcols, compsum, pseudoM, pseudoU)
-            newmrows, newmcols, rows2cols, rowOffsets, colOffsets, maxcost = max_C_initialized!(pM, pU, compsum, penalty, rows2cols, rowOffsets, colOffsets, maxcost)
-            if length(newmrows) == length(currmrows)
-                if all(newmrows .== currmrows) && all(newmcols .== currmcols)
-                    break
-                end
-            end
-            currmrows = newmrows
-            currmcols = newmcols
-        end
-        
-        outM = hcat(outM, pM)
-        outU = hcat(outU, pU)
-        outIter = push!(outIter, iter)
-        outMatches[ii] = (currmrows, currmcols)
-        push!(penalties, penalty)
-        if verbose
-            println("penalty: $penalty, matches: $(length(currmrows)), nabove: $nabove")
-        end
-        if logflag
-            open(logfile, "a") do f
-                write(f, Dates.format(now(), "yyyy-mm-dd HH:MM:SS"), "\n")
-                write(f, "penalty: $penalty, matches: $(length(currmrows)), nabove: $nabove\n\n")
-            end
-        end
-        penalty, nabove = next_penalty(mrows, mcols, pM, pU, compsum, penalty, mininc)
-    end
-    return outMatches, outM', outU', penalties, outIter
-end
-
 function map_solver_search_auction{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
                                                                   pU0::Array{G, 1},
                                                                   compsum::ComparisonSummary{<:Integer, <:Integer},
