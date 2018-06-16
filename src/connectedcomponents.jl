@@ -65,3 +65,47 @@ end
 function get_dimensions(ii::Integer, cc::ConnectedComponents)
     return cc.rowcounts[ii + 1], cc.colcounts[ii + 1]
 end
+
+function get_mids(x::Array{<:Real, 1})
+    sx = sort(x)
+    return 0.5 .* (sx[1:end-1] + sx[2:end])
+end
+
+function count_pairs(cc::ConnectedComponents)
+    return dot(cc.rowcounts[2:end], cc.colcounts[2:end])
+end
+
+function maxcomponent_pairs(cc::ConnectedComponents)
+    #if cc.ncomponents == 0
+    #    return 0
+    #end
+    maxpairs = 0#cc.rowcounts[1] .* cc.colcounts[1]
+    for ii in 1:cc.ncomponents
+        if *(get_dimensions(ii, cc)...) > maxpairs
+            maxpairs = *(get_dimensions(ii, cc)...)
+        end
+    end
+    return maxpairs
+end
+
+function maxdimension(cc::ConnectedComponents)
+    if cc.ncomponents == 0
+        return 0
+    else
+        return max(maximum(cc.rowcounts[2:end]), maximum(cc.colcounts[2:end]))
+    end
+end
+
+function count_singleton(cc::ConnectedComponents)
+    nsingleton = 0
+    for ii in 1:cc.ncomponents
+        if cc.rowcounts[ii + 1] == 1 && cc.colcounts[ii + 1] == 1
+            nsingleton += 1
+        end
+    end
+    return nsingleton
+end
+
+function summarize_components(cc::ConnectedComponents)
+    return [count_pairs(cc), maxcomponent_pairs(cc), maxdimension(cc), cc.ncomponents, count_singleton(cc)]
+end
