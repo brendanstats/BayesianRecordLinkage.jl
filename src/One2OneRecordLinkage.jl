@@ -7,7 +7,7 @@ using Distributions.Dirichlet
 using Levenshtein.levenshtein
 using DataStructures: Queue, enqueue!, dequeue!
 using StatsBase
-using StatsFuns: logistic, log1pexp, loghalf, softmax, logsumexp
+using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp
 import Base.==
 
 export ComparisonSummary,
@@ -18,9 +18,16 @@ export ComparisonSummary,
     merge_comparisonsummary,
     counts_delta,
     obs_delta
-export LinkMatrix, add_link, add_link!, remove_link!, remove_link, switch!_link, switch_link
+export LinkMatrix,
+    add_link, add_link!,
+    remove_link!, remove_link,
+    switch!_link, switch_link
 export E_step, M_step, estimate_EM
-export ConnectedComponents, get_component, get_ranges, get_dimensions
+export ConnectedComponents,
+    get_component, get_ranges, get_dimensions, get_mids,
+    count_pairs, maxcomponent_pairs,
+    count_singleton, maxdimension,
+    summarize_components
 export bipartite_cluster, sparseblock_idxlims, bipartite_cluster_sparseblock
 export counts_matches,
     weights_vector,
@@ -30,7 +37,9 @@ export counts_matches,
     maximum_weights_matrix,
     penalized_weights_matrix,
     indicator_weights_matrix,
-    compute_costs
+    compute_costs,
+    bayesrule_posterior,
+    threshold_sensitivity
 export max_MU,
     max_C,
     max_C_offsets,
