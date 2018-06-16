@@ -368,3 +368,21 @@ function compute_costs_integer{T <: AbstractFloat}(pM::Array{T, 1},
     end
     return costvec[compsum.obsidx], maxcost
 end
+
+function bayesrule_posterior{T <: AbstractFloat}(w::Array{T, 1}, p::T)
+    return logistic.(logit(p) .+ w)
+end
+
+function threshold_sensitivity{T <: AbstractFloat}(pM::Array{T, 2},
+                                                   pU::Array{T, 2},
+                                                   compsum::Union{ComparisonSummary, SparseComparisonSummary})
+    obsW = sort(maximum_weights_vector(pM, pU, compsum))
+    breaksW = get_mids(obsW)
+    maxW = maximum_weights_matrix(pM, pU, compsum)
+    ccsummary = mapreduce(vcat, breaksW) do w
+        rowLabels, colLabels, maxLabel = bipartite_cluster(maxW, w)
+        cc = ConnectedComponents(rowLabels, colLabels, maxLabel)
+        summarize_components(cc)'
+    end
+    return [obsW[1:end-1] obsW[2:end] ccsummary]
+end
