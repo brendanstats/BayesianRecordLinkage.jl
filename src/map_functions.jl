@@ -83,7 +83,8 @@ function map_solver_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
     ##Modes are found using pseudo counts of 1 - αᵢ
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
-    currmrows, currmcols = max_C_cluster(pM0, pU0, compsum, penalty, verbose = verbose)
+    #currmrows, currmcols = max_C_cluster(pM0, pU0, compsum, penalty, verbose = verbose)
+    currmrows, currmcols = max_C_cluster2(pM0, pU0, compsum, penalty, verbose = verbose)
     pM = copy(pM0)
     pU = copy(pU0)
     iter = 0
