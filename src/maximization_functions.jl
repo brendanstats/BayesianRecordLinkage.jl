@@ -355,7 +355,7 @@ function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
     #Determine error levels for complete assignment
     margin = minimum_margin(w)
     ε0 = 0.5 * margin
-    εfinal = margin / min(compsum.nrow, compsum.ncol) * εscale
+    εfinal = margin / min(compsum.nrow, compsum.ncol)
 
     #Solve assignment problem
     r2c, c2r, rowCosts, colCosts, λ = scaling_forward_backward(weightMat, ε0, εfinal, εscale)
@@ -399,7 +399,7 @@ function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
     end
     ε0 = εscale * (prevε + maxmove)
     margin = minimum_margin(w)
-    εfinal = margin / min(compsum.nrow, compsum.ncol)  * εscale
+    εfinal = margin / min(compsum.nrow, compsum.ncol)
     
     #Solve assignment problem
     r2c, c2r, rowCosts, colCosts, λ = scaling_forward_backward(weightMat, rowCosts, colCosts, ε0, εfinal, εscale, λ)
@@ -456,7 +456,7 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
         rct, cct = get_dimensions(kk, concomp)
         
         #Set precision for cluster
-        εfinal = margin / min(rct, cct) * εscale
+        εfinal = margin / min(rct, cct)
         
         if verbose
             println("Cluster: $kk of $maxLabel")
@@ -597,7 +597,7 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
                 λ = 0.0
             end
             
-            εfinal = margin / min(rct, cct) * εscale
+            εfinal = margin / min(rct, cct)
             λ = max(λ, 0.0)
             if verbose
                 println("Cluster: $kk of $maxLabel")
