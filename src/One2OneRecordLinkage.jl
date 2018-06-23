@@ -69,7 +69,7 @@ export randomwalk1_draw,
     locally_balanced_sqrt_draw, locally_balanced_sqrt_draw!,
     locally_balanced_barker_draw, locally_balanced_barker_draw!,
     randomwalk2_draw
-export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count, mh_gibbs_count_inplace
+export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count, mh_gibbs_count_inplace, mh_gibbs_count_inplace
 
 include("comparisonsummary.jl")
 include("linkmatrix.jl")
