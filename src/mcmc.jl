@@ -470,7 +470,7 @@ function mh_gibbs_chain_inplace{T <: Real}(
     return CArray, nlinkArray, MArray', UArray', transC, C
 end
 
-function mh_gibbs_count_inplace{T <: Real}(
+function mh_gibbs_chain_inplace{T <: Real}(
     outerIter::Integer,
     C0::LinkMatrix,
     blockRanges::Array{CartesianRange{CartesianIndex{2}}, 1},
