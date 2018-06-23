@@ -78,7 +78,7 @@ function betabipartite_logprior(nlink::Integer, nrow::Integer, ncol::Integer, α
     nrow >= ncol ? lfact(nrow - nlink) - lfact(nrow) +  lbeta(nlink + α, ncol - nlink + β) - lbeta(α, β) : lfact(ncol - nlink) - lfact(ncol) + lbeta(nlink + α, nrow - nlink + β) - lbeta(α, β)
 end
 
-betabipartite_logprior(C::LinkMatrix, α::Real, β::Real) = betabipartite_logprior(nlink, nrow, ncol, α, β)
+betabipartite_logprior(C::LinkMatrix, α::Real, β::Real) = betabipartite_logprior(C.nlink, C.nrow, C.ncol, α, β)
 
 function betabipartite_ratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nlink1 == nlink2

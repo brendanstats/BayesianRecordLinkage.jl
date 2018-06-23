@@ -1,6 +1,6 @@
-get_loglik{G <: Integer, T <: AbstractFloat}(row::G, col::G, compsum::ComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -10.0) = loglikMargin[compsum.obsidx[row, col]]
+get_loglik{G <: Integer, T <: AbstractFloat}(row::G, col::G, compsum::ComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf) = loglikMargin[compsum.obsidx[row, col]]
 
-function get_loglik{G <: Integer, T <: AbstractFloat}(row::G, col::G, compsum::SparseComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -10.0)
+function get_loglik{G <: Integer, T <: AbstractFloat}(row::G, col::G, compsum::SparseComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf)
     if iszero(compsum.obsidx[row, col])
         return loglikMissing
     else
@@ -1083,20 +1083,16 @@ function singleton_gibbs(rng::CartesianRange{CartesianIndex{2}}, C::LinkMatrix,
     countdelta = countDeltas[:, compsum.obsidx[rng.start]]
     loglikdelta = loglikMargin[compsum.obsidx[rng.start]]
     if iszero(C.row2col[rng.start.I[1]])
-
         lpriorratio = logpdfC(1, C)
         lp1 = loglikdelta + lpriorratio
-        
         if rand() <= logistic(lp1)
             return add_link(rng.start.I..., C), countdelta, true
         else
             return deepcopy(C), zeros(countdelta), false
         end
     else
-
         lpriorratio = -logpdfC(-1, C)
         lp1 = loglikdelta + lpriorratio
-        
         if rand() < logistic(lp1)
             return deepcopy(C), zeros(countdelta), false
         else
@@ -1106,37 +1102,15 @@ function singleton_gibbs(rng::CartesianRange{CartesianIndex{2}}, C::LinkMatrix,
     end
 end
 
-#if blockRows[kk] == 1
-#    if blockCols[kk] = 1
-#    else
-#    end
-#elseif blockCols[kk] = 1
-#elseif blockRows[kk] == 2 && blockCols[kk] == 2
-#end
-#if blockRows[kk] == 1 && blockCols[kk] == 1
-#    if rand() < logistic(dot(countDeltas[:, compsum.obsidx[blockRows[kk].start]], logDiff))
-#       if !has_link(blockRows[kk].start..., C)
-#           add_link!(blockRows[kk].start..., C)
-#       end
-#   else
-#       if has_link(blockRows[kk].start..., C)
-#           remove_link!(blockRows[kk].start..., C)
-#       end
-#   end
-#end
-
-
 function singleton_gibbs!(rng::CartesianRange{CartesianIndex{2}}, C::LinkMatrix,
                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
                           loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},
                           logpdfC::Function)
     countdelta = countDeltas[:, compsum.obsidx[rng.start]]
     loglikdelta = loglikMargin[compsum.obsidx[rng.start]]
-    if iszero(C.row2col[rng.start[1]])
-        
+    if iszero(C.row2col[rng.start[1]])        
         lpriorratio = logpdfC(1, C)
         lp1 = loglikdelta + lpriorratio
-        
         if rand() <= logistic(lp1)
             add_link!(rng.start.I..., C)
             return countdelta, true
@@ -1144,15 +1118,44 @@ function singleton_gibbs!(rng::CartesianRange{CartesianIndex{2}}, C::LinkMatrix,
             return countdelta, false
         end
     else
-
         lpriorratio = -logpdfC(-1, C)
         lp1 = loglikdelta + lpriorratio
-        
         if rand() < logistic(lp1)
             return countdelta, false
         else
             remove_link!(rng.start.I..., C)
             return -countdelta, true
         end
+    end
+end
+
+function singlerow_gibbs(row::Integer, cols::Array{<:Integer}, C::LinkMatrix,
+                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                          loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},
+                         logpdfC::Function)
+    if iszero(C.row2col[row])
+        lpriorratio0 = logpdfC(0, C)
+        lpriorratio1 = logpdfC(1, C)
+    else
+        lpriorratio0 = logpdfC(-1, C)
+        lpriorratio1 = logpdfC(0, C)
+    end
+    loglikes = Array{Float64}(length(cols) + 1)
+    loglikes[1] = lpriorratio0
+    for (jj, col) in enumerate(cols)
+        loglikes[jj + 1] = loglikMargin[compsum.obsidx[row, col]] + lpriorratio1
+    end
+    idx = searchsortedfirst(rand(), cumsum(softmax!(loglikes)))
+    if idx == 1
+        if iszero(C.row2col[row])
+            return zeros(eltype(countDeltas), size(countDeltas, 1)), false
+        else
+            remove_link!(row, C.row2col[row], C)
+        end
+    else
+        #if idx == 1
+        #elseif #equals chosen index
+        #else
+        #end
     end
 end
