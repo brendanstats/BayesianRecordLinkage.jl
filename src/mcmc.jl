@@ -1,10 +1,10 @@
 """
-Compute the conditional dirchlet distribution for updating M and U parameters via a gibbs step
-"""
+    Compute the conditional dirchlet distribution for updating M and U parameters via a gibbs step
+    """
 function dirichlet_draw(matchcounts::Array{<:Integer, 1},
-                            compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                            priorM::Array{<: Real, 1} = zeros(Float64, length(matchcounts)),
-                            priorU::Array{<: Real, 1} = zeros(Float64, length(matchcounts)))
+                        compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                        priorM::Array{<: Real, 1} = zeros(Float64, length(matchcounts)),
+                        priorU::Array{<: Real, 1} = zeros(Float64, length(matchcounts)))
     nonmatchcounts = compsum.counts - matchcounts
     paramM = matchcounts + priorM
     paramU = nonmatchcounts + priorU
@@ -23,9 +23,9 @@ function dirichlet_draw(matchcounts::Array{<:Integer, 1},
 end
 
 """
-Add Gibbs Step for M and U probabilities assuming a Dirchlet Prior
-"""
-function mh_gibbs_chain{T <: Real}(
+    Add Gibbs Step for M and U probabilities assuming a Dirchlet Prior
+    """
+function mh_gibbs_chain(
     outerIter::Integer,
     C0::LinkMatrix,
     compsum::ComparisonSummary,
@@ -37,7 +37,7 @@ function mh_gibbs_chain{T <: Real}(
     informedMoves::Bool = true,
     ratioPrior::Bool = true,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
     
     #MCMC Chains
     if sparseLinks
@@ -124,10 +124,10 @@ end
 #@code_warntype
 #view()
 #, G <: Integer
-function mh_gibbs_chain{T <: Real}(
+function mh_gibbs_chain(
     outerIter::Integer,
     C0::LinkMatrix,
-    blockRanges::Array{CartesianRange{CartesianIndex{2}}, 1},
+    blockRanges::Array{CartesianIndices{2}, 1},
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
@@ -137,7 +137,7 @@ function mh_gibbs_chain{T <: Real}(
     informedMoves::Bool = true,
     ratioPrior::Bool = true,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
     
     #MCMC Chains
     if sparseLinks
@@ -244,10 +244,10 @@ function mh_gibbs_chain{T <: Real}(
     return CArray', nlinkArray, MArray', UArray', transC
 end
 
-function mh_gibbs_count{T <: Real}(
+function mh_gibbs_count(
     outerIter::Integer,
     C0::LinkMatrix,
-    blockRanges::Array{CartesianRange{CartesianIndex{2}}, 1},
+    blockRanges::Array{CartesianIndices{2}, 1},
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
@@ -257,7 +257,7 @@ function mh_gibbs_count{T <: Real}(
     informedMoves::Bool = true,
     ratioPrior::Bool = true,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
     
     #MCMC Chains
     if sparseLinks
@@ -391,10 +391,10 @@ function mh_gibbs_count{T <: Real}(
         MArray[:, ii] = pM
         UArray[:, ii] = pU
     end
-    return CArray, nlinkArray, MArray', UArray', transC, C
+return CArray, nlinkArray, MArray', UArray', transC, C
 end
 
-function mh_gibbs_chain_inplace{T <: Real}(
+function mh_gibbs_chain_inplace(
     outerIter::Integer,
     C0::LinkMatrix,
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -404,7 +404,7 @@ function mh_gibbs_chain_inplace{T <: Real}(
     transitionC!::Function;
     innerIter::Integer = 1,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
     
     #MCMC Chains
     if sparseLinks
@@ -433,7 +433,7 @@ function mh_gibbs_chain_inplace{T <: Real}(
 
         #Inner iteration
         for jj in innerIter
-                
+            
             countdelta, move = transitionC!(C, compsum, loglikMargin, countDeltas, logpdfC)
 
             if move
@@ -470,10 +470,10 @@ function mh_gibbs_chain_inplace{T <: Real}(
     return CArray, nlinkArray, MArray', UArray', transC, C
 end
 
-function mh_gibbs_chain_inplace{T <: Real}(
+function mh_gibbs_chain_inplace(
     outerIter::Integer,
     C0::LinkMatrix,
-    blockRanges::Array{CartesianRange{CartesianIndex{2}}, 1},
+    blockRanges::Array{CartesianIndices{2}, 1},
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
@@ -481,7 +481,7 @@ function mh_gibbs_chain_inplace{T <: Real}(
     transitionC!::Function;
     innerIter::Integer = 1,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
 
     #priorType::String = "base"
     
@@ -559,7 +559,7 @@ function mh_gibbs_chain_inplace{T <: Real}(
     return CArray, nlinkArray, MArray', UArray', transC, C
 end
 
-function mh_gibbs_count_inplace{T <: Real}(
+function mh_gibbs_count_inplace(
     outerIter::Integer,
     C0::LinkMatrix,
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -569,7 +569,7 @@ function mh_gibbs_count_inplace{T <: Real}(
     transitionC!::Function;
     innerIter::Integer = 1,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
     
     #MCMC Chains
     if sparseLinks
@@ -596,7 +596,7 @@ function mh_gibbs_count_inplace{T <: Real}(
 
         #Inner iteration
         for jj in innerIter
-                
+            
             countdelta, move = transitionC!(C, compsum, loglikMargin, countDeltas, logpdfC)
 
             if move
@@ -638,10 +638,10 @@ function mh_gibbs_count_inplace{T <: Real}(
     return CArray, nlinkArray, MArray', UArray', transC, C
 end
 
-function mh_gibbs_count_inplace{T <: Real}(
+function mh_gibbs_count_inplace(
     outerIter::Integer,
     C0::LinkMatrix,
-    blockRanges::Array{CartesianRange{CartesianIndex{2}}, 1},
+    blockRanges::Array{CartesianIndices{2}, 1},
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
@@ -649,7 +649,7 @@ function mh_gibbs_count_inplace{T <: Real}(
     transitionC!::Function;
     innerIter::Integer = 1,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
 
     #priorType::String = "base"
     
@@ -732,10 +732,10 @@ function mh_gibbs_count_inplace{T <: Real}(
     return CArray, nlinkArray, MArray', UArray', transC, C
 end
 
-function mh_gibbs_count_inplace{T <: Real}(
+function mh_gibbs_count_inplace(
     outerIter::Integer,
     C0::LinkMatrix,
-    blockRanges::Array{CartesianRange{CartesianIndex{2}}, 1},
+    blockRanges::Array{CartesianIndices{2}, 1},
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
@@ -745,7 +745,7 @@ function mh_gibbs_count_inplace{T <: Real}(
     coltype::Array{<:Integer, 1};
     innerIter::Integer = 1,
     gibbsInner::Bool = true,
-    sparseLinks::Bool = true)
+    sparseLinks::Bool = true) where T <: Real
 
     #priorType::String = "base"
     

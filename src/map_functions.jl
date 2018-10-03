@@ -1,14 +1,14 @@
 """
     map_solver(pM0, pU0, comparisonSummary, [priorM], [priorU], penalty; maxIter) -> matchRows, matchColumns, pM, pU, iterations
 """
-function map_solver{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
+function map_solver(pM0::Array{G, 1},
                                                    pU0::Array{G, 1},
                                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                    priorM::Array{T, 1} = ones(T, length(compsum.counts)),
                                                    priorU::Array{T, 1} = ones(T, length(compsum.counts)),
                                                    penalty::AbstractFloat = 0.0;
                                                    maxIter::Integer = 100,
-                                                   verbose::Bool = false)
+                                                   verbose::Bool = false) where {G <: AbstractFloat, T <: Real}
     ##Modes are found using pseudo counts of 1 - αᵢ
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
@@ -38,14 +38,14 @@ end
 """
     map_solver(pM0, pU0, comparisonSummary, [priorM], [priorU], penalty; maxIter) -> matchRows, matchColumns, pM, pU, iterations
 """
-function map_solver_initialize{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
+function map_solver_initialize(pM0::Array{G, 1},
                                                               pU0::Array{G, 1},
                                                               compsum::ComparisonSummary{<:Integer, <:Integer},
                                                               priorM::Array{T, 1} = ones(T, length(compsum.counts)),
                                                               priorU::Array{T, 1} = ones(T, length(compsum.counts)),
                                                               penalty::AbstractFloat = 0.0;
                                                               maxIter::Integer = 100,
-                                                              verbose::Bool = false)
+                                                              verbose::Bool = false) where {G <: AbstractFloat, T <: Real}
     ##Modes are found using pseudo counts of αᵢ - 1
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
@@ -72,14 +72,14 @@ function map_solver_initialize{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
     return currmrows, currmcols, pM, pU, iter
 end
 
-function map_solver_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
+function map_solver_cluster(pM0::Array{G, 1},
                                                            pU0::Array{G, 1},
                                                            compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                            priorM::Array{T, 1},
                                                            priorU::Array{T, 1},
                                                            penalty::AbstractFloat = 0.0;
                                                            maxIter::Integer = 100,
-                                                           verbose::Bool = false)
+                                                           verbose::Bool = false) where {G <: AbstractFloat, T <: Real}
     ##Modes are found using pseudo counts of 1 - αᵢ
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
@@ -110,7 +110,7 @@ function map_solver_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
     return currmrows, currmcols, pM, pU, iter
 end
 
-function map_solver_auction{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
+function map_solver_auction(pM0::Array{G, 1},
                                                            pU0::Array{G, 1},
                                                            compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                            priorM::Array{T, 1} = ones(T, length(compsum.counts)),
@@ -118,7 +118,7 @@ function map_solver_auction{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
                                                            penalty::AbstractFloat = 0.0,
                                                            εscale::T = 0.2;
                                                            maxIter::Integer = 100,
-                                                           verbose::Bool = false)
+                                                           verbose::Bool = false) where {G <: AbstractFloat, T <: Real}
     ##Modes are found using pseudo counts of 1 - αᵢ
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
@@ -157,7 +157,7 @@ function map_solver_auction{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
     return mrows, mcols, pM, pU, iter
 end
 
-function map_solver_auction_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G, 1},
+function map_solver_auction_cluster(pM0::Array{G, 1},
                                                            pU0::Array{G, 1},
                                                            compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                            priorM::Array{T, 1} = ones(T, length(compsum.counts)),
@@ -165,7 +165,7 @@ function map_solver_auction_cluster{G <: AbstractFloat, T <: Real}(pM0::Array{G,
                                                            penalty::AbstractFloat = 0.0,
                                                            εscale::T = 0.2;
                                                            maxIter::Integer = 100,
-                                                           verbose::Bool = false)
+                                                           verbose::Bool = false) where {G <: AbstractFloat, T <: Real}
     ##Modes are found using pseudo counts of 1 - αᵢ
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))

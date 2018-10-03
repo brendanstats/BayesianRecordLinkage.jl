@@ -1,14 +1,14 @@
-#__precompile__()
 module One2OneRecordLinkage
 using Munkres, RCall, AssignmentSolver
 clue = rimport("clue")
 
-using Distributions.Dirichlet
-using Levenshtein.levenshtein
+using Distributions: Dirichlet
+using Levenshtein: levenshtein
 using DataStructures: Queue, enqueue!, dequeue!
 using StatsBase
 using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp
-import Base.==
+using SparseArrays
+import Base: ==
 
 export ComparisonSummary,
     SparseComparisonSummary,

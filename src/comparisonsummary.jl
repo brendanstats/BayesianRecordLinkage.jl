@@ -99,7 +99,7 @@ function comparison_variables(comparisons::Array{Bool, 3}, nrow::Int64, ncol::In
     return obsidx, obsvecs, obsvecct
 end
 
-function comparison_variables{G <: Integer}(comparisons::Array{G, 3}, nrow::Int64, ncol::Int64, ncomp::Int64)
+function comparison_variables(comparisons::Array{G, 3}, nrow::Int64, ncol::Int64, ncomp::Int64) where G <: Integer
     obsidx = Array{Int64}(nrow, ncol)
     obsvecct = Array{Int64}(0) 
     idxDict = Dict{Array{G, 1}, Int64}()
@@ -122,7 +122,7 @@ function comparison_variables{G <: Integer}(comparisons::Array{G, 3}, nrow::Int6
     return obsidx, obsvecs, obsvecct
 end
 
-function comparison_variables{G <: Integer}(rows::Array{Int64, 1}, cols::Array{Int64, 1}, comparisons::Array{G, 2}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = Int64, obsType::DataType = G)
+function comparison_variables(rows::Array{Int64, 1}, cols::Array{Int64, 1}, comparisons::Array{G, 2}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = Int64, obsType::DataType = G) where G <: Integer
 
     obsidxvec = Array{idxType}(size(comparisons, 1))
     obsvecct = Array{Int64}(0) 
@@ -151,7 +151,7 @@ function comparison_variables{G <: Integer}(rows::Array{Int64, 1}, cols::Array{I
     return obsidx, obsvecs, obsvecct
 end
 
-function comparison_variables{G <: Integer}(comparisons::Array{G, 2}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = G, obsType::DataType = Int8)
+function comparison_variables(comparisons::Array{G, 2}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = G, obsType::DataType = Int8) where G <: Integer
 
     obsidxvec = Array{idxType}(size(comparisons, 1))
     obsvecct = Array{Int64}(0) 
@@ -366,7 +366,7 @@ function comparison_variables(namelist::Array{Array{String, 1}, 1}, nrow::Int64,
 end
 
 ##Count numbers of observations
-function count_variables{G <: Integer, T <: Integer}(obsidx::Array{G, 2}, obsvecs::Array{T, 2}, obsvecct::Array{Int64, 1}, cmap::Array{Int64, 1}, cadj::Array{Int64, 1})
+function count_variables(obsidx::Array{G, 2}, obsvecs::Array{T, 2}, obsvecct::Array{Int64, 1}, cmap::Array{Int64, 1}, cadj::Array{Int64, 1}) where {G <: Integer, T <: Integer}
     ncomp = size(obsvecs, 1)
     npairs = size(obsidx, 1) * size(obsidx, 2)
     counts = zeros(Int64, length(cmap))
@@ -383,7 +383,7 @@ function count_variables{G <: Integer, T <: Integer}(obsidx::Array{G, 2}, obsvec
     return npairs, counts, obsct, misct
 end
 
-function count_variables{G <: Integer, T <: Integer}(obsidx::SparseMatrixCSC{G, Int64}, obsvecs::Array{T, 2}, obsvecct::Array{Int64, 1}, cmap::Array{Int64, 1}, cadj::Array{Int64, 1})
+function count_variables(obsidx::SparseMatrixCSC{G, Int64}, obsvecs::Array{T, 2}, obsvecct::Array{Int64, 1}, cmap::Array{Int64, 1}, cadj::Array{Int64, 1}) where {G <: Integer, T <: Integer}
     ncomp = size(obsvecs, 1)
     npairs = nnz(obsidx)
     counts = zeros(Int64, length(cmap))
@@ -429,7 +429,7 @@ function ComparisonSummary(comparisons::Array{Bool, 3})
 end
 
 #ncomp = length(nlevels)
-function ComparisonSummary{G <: Integer}(comparisons::Array{G, 3}, nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, 1:2)))
+function ComparisonSummary(comparisons::Array{G, 3}, nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, 1:2))) where G <: Integer
 
     nrow, ncol, ncomp = size(comparisons)
     cmap, levelmap, cadj = mapping_variables(nlevels)
@@ -439,7 +439,7 @@ function ComparisonSummary{G <: Integer}(comparisons::Array{G, 3}, nlevels::Arra
     return ComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
 end
 
-ComparisonSummary{G <: Integer}(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::ComparisonSummary) =
+ComparisonSummary(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::ComparisonSummary) where G <: Integer =
     ComparisonSummary(compsum.obsidx[rowperm, colperm], compsum.obsvecs, compsum.obsvecct, compsum.counts,
                       compsum.obsct, compsum.misct, compsum.nlevels, compsum.cmap, compsum.levelmap, compsum.cadj,
                       compsum.nrow, compsum.ncol, compsum.npairs, compsum.ncomp)
@@ -462,11 +462,11 @@ struct SparseComparisonSummary{G <: Integer, T <: Integer}
 end
 
 #defined assuming each row of input is an observation, each column would be more efficient...
-function SparseComparisonSummary{G <: Integer}(rows::Array{Int64, 1}, cols::Array{Int64, 1},
+function SparseComparisonSummary(rows::Array{Int64, 1}, cols::Array{Int64, 1},
                                                comparisons::Array{G, 2},
                                                nrow::Integer = maximum(rows),
                                                ncol::Integer = maximum(cols),
-                                               nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, 1)))
+                                               nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, 1))) where G <: Integer
     if length(rows) != length(cols)
         error("rows and columns must be the same length")
     end
@@ -479,10 +479,10 @@ function SparseComparisonSummary{G <: Integer}(rows::Array{Int64, 1}, cols::Arra
     return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
 end
 
-function SparseComparisonSummary{G <: Integer}(comparisons::Array{G, 2},
+function SparseComparisonSummary(comparisons::Array{G, 2},
                                                nrow::Int64 = Int64.(maximum(comparisons[:, 1])),
                                                ncol::Int64 = Int64.(maximum(comparisons[:, 2])),
-                                               nlevels::Array{Int64, 1} = Int64.(vec(maximum(comparisons, 1))[3:end]))
+                                               nlevels::Array{Int64, 1} = Int64.(vec(maximum(comparisons, 1))[3:end])) where G <: Integer
 
     ncomp = length(nlevels)
     cmap, levelmap, cadj = mapping_variables(nlevels)    
@@ -567,7 +567,7 @@ function extract_integers(s::String, nobs::Integer, idxType::DataType, obsType::
     return row, col, obs
 end
 
-function extract_integers!{G <: Integer, T <: Integer}(row::G, col::G, obs::Array{T, 1}, s::String, nobs::Integer, sep::Char)
+function extract_integers!(row::G, col::G, obs::Array{T, 1}, s::String, nobs::Integer, sep::Char) where {G <: Integer, T <: Integer}
     idx1 = start(s)
     n = endof(s)
     r = search(s, sep, idx1)
@@ -683,7 +683,7 @@ function merge_comparisonsummary(CS1::SparseComparisonSummary, CS2::SparseCompar
         end
     end
 
-    function idx_combine{G <: Real}(x::G, y::G)
+    function idx_combine(x::G, y::G) where G <: Real
         if x == y
             return x
         else
@@ -714,12 +714,12 @@ function merge_comparisonsummary(CS1::SparseComparisonSummary, CS2::SparseCompar
     return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
 end
 
-SparseComparisonSummary{G <: Integer}(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::SparseComparisonSummary) =
+SparseComparisonSummary(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::SparseComparisonSummary) where G <: Integer =
     SparseComparisonSummary(compsum.obsidx[rowperm, colperm], compsum.obsvecs, compsum.obsvecct, compsum.counts,
                       compsum.obsct, compsum.misct, compsum.nlevels, compsum.cmap, compsum.levelmap, compsum.cadj,
                       compsum.nrow, compsum.ncol, compsum.npairs, compsum.ncomp)
 
-function counts_delta{G <: Integer, T <: Integer}(compsum::Union{ComparisonSummary{G, T}, SparseComparisonSummary{G, T}})
+function counts_delta(compsum::Union{ComparisonSummary{G, T}, SparseComparisonSummary{G, T}}) where {G <: Integer, T <: Integer}
     deltas = zeros(Int8, length(compsum.counts), size(compsum.obsvecs, 2))
     for jj in 1:size(compsum.obsvecs, 2), ii in 1:size(compsum.obsvecs, 1)
         if compsum.obsvecs[ii, jj] != zero(T)
@@ -729,7 +729,7 @@ function counts_delta{G <: Integer, T <: Integer}(compsum::Union{ComparisonSumma
     return deltas
 end
 
-function obs_delta{G <: Integer, T <: Integer}(compsum::Union{ComparisonSummary{G, T}, SparseComparisonSummary{G, T}})
+function obs_delta(compsum::Union{ComparisonSummary{G, T}, SparseComparisonSummary{G, T}}) where {G <: Integer, T <: Integer}
     deltas = zeros(Int8, size(compsum.obsvecs))
     for jj in 1:size(compsum.obsvecs, 2), ii in 1:size(compsum.obsvecs, 1)
         if !iszero(compsum.obsvecs[ii, jj])

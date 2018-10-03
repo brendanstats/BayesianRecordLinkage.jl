@@ -3,11 +3,11 @@
 
 compute posterior maximums for M and U probabilities assuming a dirichlet prior.
 """
-function max_MU{G <: Integer, T <: Real}(mrows::Array{G, 1},
+function max_MU(mrows::Array{G, 1},
                                          mcols::Array{G, 1},
                                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                          pseudoM::Array{T, 1},
-                                         pseudoU::Array{T, 1})
+                                         pseudoU::Array{T, 1}) where {G <: Integer, T <: Real}
     #Count Match / Non-match observations
     matchcounts, matchobs = counts_matches(mrows, mcols, compsum)
     nonmatchcounts = compsum.counts - matchcounts
@@ -31,10 +31,10 @@ end
 """
     max_C(pM, pU, comparisonSummary, penalty) -> matchRows, matchColumns
 """
-function max_C{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C(pM::Array{T, 1},
                                    pU::Array{T, 1},
                                    compsum::ComparisonSummary,
-                                   penalty::AbstractFloat = 0.0)
+                                   penalty::AbstractFloat = 0.0) where T <: AbstractFloat
 
     if compsum.nrow <= compsum.ncol
         wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)
@@ -61,10 +61,10 @@ function max_C{T <: AbstractFloat}(pM::Array{T, 1},
     end
 end
 
-function max_C{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C(pM::Array{T, 1},
                                    pU::Array{T, 1},
                                    compsum::SparseComparisonSummary,
-                                   penalty::AbstractFloat = 0.0)
+                                   penalty::AbstractFloat = 0.0) where T <: AbstractFloat
 
     if compsum.nrow <= compsum.ncol
         wpenalized = full(penalized_weights_matrix(pM, pU, compsum, penalty)) #makes it non-sparse do not want to use in most cases
@@ -94,11 +94,11 @@ end
 """
     max_C_complete(pM, pU, comparisonSummary, penalty) -> matchRows, matchColumns, keep, costs
 """
-function max_C_offsets{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_offsets(pM::Array{T, 1},
                                            pU::Array{T, 1},
                                            compsum::ComparisonSummary,
                                            penalty::AbstractFloat = 0.0;
-                                           verbose::Bool = false)
+                                           verbose::Bool = false) where T <: AbstractFloat
     
     costs, maxcost = compute_costs(pM, pU, compsum, penalty)
     #costs, maxcost = compute_costs_integer(pM, pU, compsum, penalty)
@@ -129,7 +129,7 @@ function max_C_offsets{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols, rows2cols, rowOffsets, colOffsets, maxcost
 end
 
-function max_C_initialized!{T <: AbstractFloat, G <: Real}(pM::Array{T, 1},
+function max_C_initialized!(pM::Array{T, 1},
                                                            pU::Array{T, 1},
                                                            compsum::ComparisonSummary,
                                                            penalty::AbstractFloat,
@@ -137,7 +137,7 @@ function max_C_initialized!{T <: AbstractFloat, G <: Real}(pM::Array{T, 1},
                                                            rowOffsets::Array{G, 1},
                                                            colOffsets::Array{G, 1},
                                                            maxcost0::Real;
-                                                           verbose::Bool = false)
+                                                           verbose::Bool = false) where {T <: AbstractFloat, G <: Real}
     
     costs, maxcost = compute_costs(pM, pU, compsum, penalty)
     #costs, maxcost = compute_costs_shrunk(pM, pU, compsum, penalty)
@@ -175,11 +175,11 @@ end
 """
     maximizes by first 
 """
-function max_C_cluster{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_cluster(pM::Array{T, 1},
                                            pU::Array{T, 1},
                                            compsum::ComparisonSummary,
                                            penalty::AbstractFloat = 0.0;
-                                           verbose::Bool = false)
+                                           verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
     aboveThreshold = indicator_weights_matrix(pM, pU, compsum, penalty)
@@ -232,11 +232,11 @@ function max_C_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols
 end
 
-function max_C_cluster2{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_cluster2(pM::Array{T, 1},
                                             pU::Array{T, 1},
                                             compsum::ComparisonSummary,
                                             penalty::AbstractFloat = 0.0;
-                                            verbose::Bool = false)
+                                            verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
     w = penalized_weights_vector(pM, pU, compsum, penalty)
@@ -280,11 +280,11 @@ function max_C_cluster2{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols
 end
 
-function max_C_cluster{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_cluster(pM::Array{T, 1},
                                            pU::Array{T, 1},
                                            compsum::SparseComparisonSummary,
                                            penalty::AbstractFloat = 0.0;
-                                           verbose::Bool = false)
+                                           verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
     aboveThreshold = indicator_weights_matrix(pM, pU, compsum, penalty)
@@ -343,11 +343,11 @@ function max_C_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols
 end
 
-function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_auction(pM::Array{T, 1},
                                            pU::Array{T, 1},
                                            compsum::ComparisonSummary,
                                            penalty::AbstractFloat = 0.0,
-                                           εscale::T = 0.2)
+                                           εscale::T = 0.2) where T <: AbstractFloat
     #Compute weights
     w = penalized_weights_vector(pM, pU, compsum, penalty)
     weightMat = weights_matrix(w, compsum)
@@ -373,7 +373,7 @@ function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols, rowCosts, colCosts, w, εfinal, λ
 end
 
-function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_auction(pM::Array{T, 1},
                                            pU::Array{T, 1},
                                            compsum::ComparisonSummary,
                                            rowCosts::Array{T, 1},
@@ -382,7 +382,7 @@ function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
                                            prevε::T,
                                            λ::T,
                                            penalty::AbstractFloat = 0.0,
-                                           εscale::T = 0.2)
+                                           εscale::T = 0.2) where T <: AbstractFloat
     #Compute weights
     w = penalized_weights_vector(pM, pU, compsum, penalty)
     weightMat = weights_matrix(w, compsum)
@@ -421,12 +421,12 @@ function max_C_auction{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols, rowCosts, colCosts, w, εfinal, λ
 end
 
-function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_auction_cluster(pM::Array{T, 1},
                                                    pU::Array{T, 1},
                                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                    penalty::AbstractFloat = 0.0,
                                                    εscale::AbstractFloat = 0.2;
-                                                   verbose::Bool = false)
+                                                   verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
     w = penalized_weights_vector(pM, pU, compsum, penalty)
@@ -496,7 +496,7 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols, r2c, c2r, rowCosts, colCosts, w, margin
 end
 
-function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_auction_cluster(pM::Array{T, 1},
                                                    pU::Array{T, 1},
                                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                    r2c::Array{<:Integer, 1},
@@ -507,7 +507,7 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
                                                    prevmargin::AbstractFloat,
                                                    penalty::AbstractFloat = 0.0,
                                                    εscale::AbstractFloat = 0.2;
-                                                   verbose::Bool = false)
+                                                   verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
     w = penalized_weights_vector(pM, pU, compsum, penalty)
@@ -630,12 +630,12 @@ function max_C_auction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
     return mrows, mcols, r2c, c2r, rowCosts, colCosts, w, margin
 end
 
-function max_C_sparseauction_cluster{T <: AbstractFloat}(pM::Array{T, 1},
+function max_C_sparseauction_cluster(pM::Array{T, 1},
                                                          pU::Array{T, 1},
                                                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                          penalty::AbstractFloat = 0.0,
                                                          εscale::AbstractFloat = 0.2;
-                                                         verbose::Bool = false)
+                                                         verbose::Bool = false) where T <: AbstractFloat
     
     ##Compute weights
     w = penalized_weights_vector(pM, pU, compsum, penalty)

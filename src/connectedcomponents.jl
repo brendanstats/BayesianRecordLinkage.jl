@@ -14,7 +14,7 @@ struct ConnectedComponents{G <: Integer}
     ncomponents::G
 end
 
-function ConnectedComponents{G <: Integer}(rowLabels::Array{G, 1}, colLabels::Array{G, 1}, ncomponents::G = maximum(rowLabels), nrow::G = length(rowLabels), ncol::G = length(colLabels))
+function ConnectedComponents(rowLabels::Array{G, 1}, colLabels::Array{G, 1}, ncomponents::G = maximum(rowLabels), nrow::G = length(rowLabels), ncol::G = length(colLabels)) where G <: Integer
 
     rowperm = sortperm(rowLabels)
     colperm = sortperm(colLabels)    

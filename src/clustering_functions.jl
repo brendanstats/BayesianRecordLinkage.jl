@@ -1,11 +1,11 @@
 """
-    bipartite_cluster(linkArray) -> rowLabels, columnLabels
+        bipartite_cluster(linkArray) -> rowLabels, columnLabels
 
-Finds the connected components taking a binary edge matrix for a bipartite graph
-and labeles all components.  Nodes that are connected to no other nodes are left
-with a label of 0.
-"""
-function bipartite_cluster{A <: AbstractArray{Bool, 2}}(linkArray::A)
+    Finds the connected components taking a binary edge matrix for a bipartite graph
+    and labeles all components.  Nodes that are connected to no other nodes are left
+    with a label of 0.
+    """
+function bipartite_cluster(linkArray::A) where A <: AbstractArray{Bool, 2}
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
     colLabels = zeros(Int64, m)
@@ -71,13 +71,13 @@ function bipartite_cluster{A <: AbstractArray{Bool, 2}}(linkArray::A)
 end
 
 """
-    bipartite_cluster(weightArray, [threshold]) -> rowLabels, columnLabels
+        bipartite_cluster(weightArray, [threshold]) -> rowLabels, columnLabels
 
-Finds the connected components taking a matrix of edge weights and a threshold
-for a bipartite graph and labeles all components.  All edge weights above the
-threshold are used to connect components.  Nodes that are connected to no other
-nodes are left with a label of 0.  Threshold value defaults to 0.
-"""
+    Finds the connected components taking a matrix of edge weights and a threshold
+    for a bipartite graph and labeles all components.  All edge weights above the
+    threshold are used to connect components.  Nodes that are connected to no other
+    nodes are left with a label of 0.  Threshold value defaults to 0.
+    """
 function bipartite_cluster(weightArray::Array{<:AbstractFloat, 2}, threshold::AbstractFloat = 0.0)
     n, m = size(weightArray)
     rowLabels = zeros(Int64, n)
@@ -144,7 +144,7 @@ function bipartite_cluster(weightArray::Array{<:AbstractFloat, 2}, threshold::Ab
 end
 
 
-function bipartite_cluster{A <: SparseMatrixCSC}(linkArray::A)
+function bipartite_cluster(linkArray::A) where A <: SparseMatrixCSC
     transposeArray = linkArray'
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
@@ -228,7 +228,7 @@ function bipartite_cluster{A <: SparseMatrixCSC}(linkArray::A)
     return rowLabels, colLabels, maxLabel
 end
 
-function sparseblock_idxlims{A <: SparseMatrixCSC}(linkArray::A)
+function sparseblock_idxlims(linkArray::A) where A <: SparseMatrixCSC
     n, m = size(linkArray)
     col2rowstart = fill(n + 1, m)
     col2rowend = fill(0, m)
@@ -255,7 +255,7 @@ function sparseblock_idxlims{A <: SparseMatrixCSC}(linkArray::A)
     return row2colstart, row2colend, col2rowstart, col2rowend
 end
 
-function bipartite_cluster_sparseblock{G <: Integer, A <: SparseMatrixCSC{Bool}}(linkArray::A, row2colstart::Array{G, 1}, row2colend::Array{G, 1}, col2rowstart::Array{G, 1}, col2rowend::Array{G, 1})
+function bipartite_cluster_sparseblock(linkArray::A, row2colstart::Array{G, 1}, row2colend::Array{G, 1}, col2rowstart::Array{G, 1}, col2rowend::Array{G, 1}) where {G <: Integer, A <: SparseMatrixCSC{Bool}}
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
     colLabels = zeros(Int64, m)
@@ -319,11 +319,11 @@ function bipartite_cluster_sparseblock{G <: Integer, A <: SparseMatrixCSC{Bool}}
     return rowLabels, colLabels, maxLabel
 end
 
-function bipartite_cluster_sparseblock{A <: SparseMatrixCSC{Bool}}(linkArray::A)
+function bipartite_cluster_sparseblock(linkArray::A) where {A <: SparseMatrixCSC{Bool}}
     return bipartite_cluster_sparseblock(linkArray, sparseblock_idxlims(linkArray)...)
 end
 
-function bipartite_cluster_sparseblock{G <: Integer, T <: AbstractFloat, A <: SparseMatrixCSC{T}}(linkArray::A, threshold::T, row2colstart::Array{G, 1}, row2colend::Array{G, 1}, col2rowstart::Array{G, 1}, col2rowend::Array{G, 1})
+function bipartite_cluster_sparseblock(linkArray::A, threshold::T, row2colstart::Array{G, 1}, row2colend::Array{G, 1}, col2rowstart::Array{G, 1}, col2rowend::Array{G, 1}) where {G <: Integer, T <: AbstractFloat, A <: SparseMatrixCSC{T}}
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
     colLabels = zeros(Int64, m)
@@ -387,6 +387,6 @@ function bipartite_cluster_sparseblock{G <: Integer, T <: AbstractFloat, A <: Sp
     return rowLabels, colLabels, maxLabel
 end
 
-function bipartite_cluster_sparseblock{T <: AbstractFloat, A <: SparseMatrixCSC{T}}(linkArray::A, threshold::T)
+function bipartite_cluster_sparseblock(linkArray::A, threshold::T) where {T <: AbstractFloat, A <: SparseMatrixCSC{T}}
     return bipartite_cluster_sparseblock(linkArray, threshold, sparseblock_idxlims(linkArray)...)
 end

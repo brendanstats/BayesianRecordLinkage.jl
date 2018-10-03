@@ -52,10 +52,43 @@ end
         for ii in [10, 50, 100, 250, 500], jj in [10, 50, 100, 250, 500], kk in 0.0:0.1:1.0
             costs = rand(ii, jj)
             @test bipartite_cluster(costs, kk) == bipartite_cluster(costs .> kk)
+            @test bipartite_cluster(costs, kk) == bipartite_cluster(sparse(costs .> kk))
         end
     end
 
 end
+
+########################################
+#Test prior_functions.jl
+########################################
+
+########################################
+#Test balancing_functions.jl
+########################################
+
+########################################
+#Test move_functions.jl
+########################################
+
+#check weights                                                                                                                                                                  
+@time w1 = One2OneRecordLinkage.log_move_weights(C, compsum, loglikMargin, logpdfC, lidentity_balance)
+
+@time w2 = One2OneRecordLinkage.move_weights(C, compsum, countDeltas, logDiff, logratioC, true, identity_balance)
+
+maximum(abs.(exp.(w1) - w2))
+
+@time w1 = One2OneRecordLinkage.log_move_weights(C, compsum, loglikMargin, logpdfC, lsqrt_balance)
+
+@time w2 = One2OneRecordLinkage.move_weights(C, compsum, countDeltas, logDiff, logratioC, true, sqrt_balance)
+
+maximum(abs.(exp.(w1) - w2))
+
+@time w1 = One2OneRecordLinkage.log_move_weights(C, compsum, loglikMargin, logpdfC, lbarker_balance)
+
+@time w2 = One2OneRecordLinkage.move_weights(C, compsum, countDeltas, logDiff, logratioC, true, barker_balance)
+
+maximum(abs.(exp.(w1) - w2))
+
 
 ########################################
 #Test map_functions.jl

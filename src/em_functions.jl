@@ -4,8 +4,8 @@
 Expectation step in EM algorithm for estimating mixture model of matching and
 non-matching record pairs.  
 """
-function E_step{T <: AbstractFloat}(pM::Array{T, 1}, pU::Array{T, 1},
-                                    p::AbstractFloat, compsum::Union{ComparisonSummary, SparseComparisonSummary})
+function E_step(pM::Array{T, 1}, pU::Array{T, 1},
+                                    p::AbstractFloat, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <: AbstractFloat
     lpM = log.(pM)
     lpU = log.(pU)
     lpMatch = zeros(T, length(compsum.obsvecct))
@@ -30,10 +30,10 @@ end
 
 M step in EM algorithm.  Returns maximized parameter estimates including pseudo counts supplied for regularization.
 """
-function M_step{T <: AbstractFloat, G <: Real}(gM::Array{T, 1}, gU::Array{T, 1},
+function M_step(gM::Array{T, 1}, gU::Array{T, 1},
                                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                                pseudoM::Array{G, 1},
-                                               pseudoU::Array{G, 1})
+                                               pseudoU::Array{G, 1}) where {T <: AbstractFloat, G <: Real}
     freqgM = compsum.obsvecct .* gM
     freqgU = compsum.obsvecct .* gU
     countsM = zeros(T, length(compsum.counts))
@@ -65,12 +65,12 @@ end
 
 Resturns EM parameter estimates, the number of iterations and true/false value indicating if convergence was achieved.  
 """
-function estimate_EM{T <: AbstractFloat}(pM0::Array{T, 1}, pU0::Array{T, 1},
+function estimate_EM(pM0::Array{T, 1}, pU0::Array{T, 1},
                                          p0::AbstractFloat, compsum::Union{ComparisonSummary, SparseComparisonSummary};
                                          maxIter::Integer = 5000,
                                          pseudoM::Array{<:Real, 1} = mapreduce(x -> fill(1.0/x,x), append!, compsum.nlevels),
                                          pseudoU::Array{<:Real, 1} = mapreduce(x -> fill(1.0/x,x), append!, compsum.nlevels),
-                                         tol::AbstractFloat = 1.0e-6)
+                                         tol::AbstractFloat = 1.0e-6) where T <: AbstractFloat
     pM = copy(pM0)
     pU = copy(pU0)
     p = copy(p0)

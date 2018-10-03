@@ -15,8 +15,8 @@ mutable struct LinkMatrix{G <: Integer}
     #end
 end
 
-LinkMatrix{G <: Integer}(row2col::SparseVector{G, G}, col2row::SparseVector{G, G}) = LinkMatrix(row2col, col2row, G(countnz(row2col)), G(row2col.n), G(col2row.n))
-function LinkMatrix{G <: Integer, T <: Integer}(row2col::SparseVector{G, T}, col2row::SparseVector{G, T})
+LinkMatrix(row2col::SparseVector{G, G}, col2row::SparseVector{G, G}) where G <: Integer = LinkMatrix(row2col, col2row, G(countnz(row2col)), G(row2col.n), G(col2row.n))
+function LinkMatrix(row2col::SparseVector{G, T}, col2row::SparseVector{G, T}) where {G <: Integer, T <: Integer}
     if countnz(row2col) != countnz(col2row)
         error("inconsistent row and column mappings provided")
     end
@@ -37,11 +37,11 @@ function LinkMatrix(G::DataType, row2col::SparseVector, col2row::SparseVector)
     return LinkMatrix(SparseVector(row2col.n, G.(row2col.nzind), G.(row2col.nzval)), SparseVector(col2row.n, G.(col2row.nzind), G.(col2row.nzval)))
 end
 
-LinkMatrix{G <: Integer}(row2col::Array{G, 1}, col2row::Array{G, 1}) = LinkMatrix(sparse(row2col), sparse(col2row))
-LinkMatrix{G <: Integer}(row2col::Array{G, 1}, col2row::Array{G, 1}, nlink::G) = LinkMatrix(row2col, col2row, G(length(row2col)), G(length(col2row)))
-LinkMatrix{G <: Integer}(nrow::G, ncol::G) = LinkMatrix(spzeros(G, nrow), spzeros(G, ncol), zero(G), nrow, ncol)
+LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}) where G <: Integer = LinkMatrix(sparse(row2col), sparse(col2row))
+LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}, nlink::G) where G <: Integer = LinkMatrix(row2col, col2row, G(length(row2col)), G(length(col2row)))
+LinkMatrix(nrow::G, ncol::G) where G <: Integer = LinkMatrix(spzeros(G, nrow), spzeros(G, ncol), zero(G), nrow, ncol)
 
-function LinkMatrix{G <: Integer}(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1})
+function LinkMatrix(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1}) where G <: Integer
     row2col = zeros(G, nrow)
     col2row = zeros(G, ncol)
     for (ii, jj) in zip(mrows, mcols)
@@ -78,7 +78,7 @@ function ==(C1::LinkMatrix, C2::LinkMatrix)
     return true
 end
 
-function has_link{G <: Integer}(row::G, col::G, C::LinkMatrix)
+function has_link(row::G, col::G, C::LinkMatrix) where G <: Integer
     if (C.row2col[row] == col) && (C.col2row[col] == row)
         return true
     else
@@ -86,7 +86,7 @@ function has_link{G <: Integer}(row::G, col::G, C::LinkMatrix)
     end
 end
 
-function add_link!{G <: Integer}(row::G, col::G, C::LinkMatrix{G})
+function add_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
     if (!iszero(C.row2col[row])) || (!iszero(C.col2row[col]))
         r2c = C.row2col[row]
         c2r = C.col2row[col]
@@ -99,9 +99,9 @@ function add_link!{G <: Integer}(row::G, col::G, C::LinkMatrix{G})
     return C
 end
 
-add_link{G <: Integer}(row::G, col::G, C::LinkMatrix) = add_link!(row, col, deepcopy(C))
+add_link(row::G, col::G, C::LinkMatrix) where G <: Integer = add_link!(row, col, deepcopy(C))
 
-function remove_link!{G <: Integer}(row::G, col::G, C::LinkMatrix)
+function remove_link!(row::G, col::G, C::LinkMatrix) where G <: Integer
     if iszero(C.row2col[row]) || iszero(C.col2row[col])
         warn("row column pair not linked, no removal")
     else
@@ -114,9 +114,9 @@ function remove_link!{G <: Integer}(row::G, col::G, C::LinkMatrix)
     return C
 end
 
-remove_link{G <: Integer}(row::G, col::G, C::LinkMatrix) = remove_link!(row, col, deepcopy(C))
+remove_link(row::G, col::G, C::LinkMatrix) where G <: Integer = remove_link!(row, col, deepcopy(C))
 
-function switch_link!{G <: Integer}(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix)
+function switch_link!(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer
     if (C.row2col[row1] != col1) || (C.row2col[row2] != col2)
         warn("provided pairs not current links, no switch")
     end
@@ -127,4 +127,4 @@ function switch_link!{G <: Integer}(row1::G, col1::G, row2::G, col2::G, C::LinkM
     return C
 end
 
-switch_link{G <: Integer}(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) = switch_link!(row1, col1, row2, col2, deepcopy(C))
+switch_link(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer = switch_link!(row1, col1, row2, col2, deepcopy(C))
