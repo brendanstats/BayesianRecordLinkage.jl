@@ -1,6 +1,7 @@
 module One2OneRecordLinkage
-using Munkres, RCall, AssignmentSolver
-clue = rimport("clue")
+using Munkres, AssignmentSolver
+#using RCall
+#clue = rimport("clue")
 
 using Distributions: Dirichlet
 using Levenshtein: levenshtein
@@ -28,7 +29,7 @@ export ConnectedComponents,
     count_pairs, maxcomponent_pairs,
     count_singleton, maxdimension,
     summarize_components
-export bipartite_cluster, sparseblock_idxlims, bipartite_cluster_sparseblock
+export bipartite_cluster, sparseblock_idxlims, bipartite_cluster_sparseblock, iterative_bipartite_cluster, iterative_bipartite_cluster2
 export counts_matches,
     weights_vector,
     penalized_weights_vector,
