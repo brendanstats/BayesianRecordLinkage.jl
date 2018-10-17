@@ -14,8 +14,8 @@ Returns vectors comparable to comparisonSummary.counts and comparisonSummary.obs
 corresponding to 
 """
 function counts_matches(mrows::Array{G, 1},
-                                      mcols::Array{G, 1},
-                                      compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+                        mcols::Array{G, 1},
+                        compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
     
     #count occurences of each observation in obsvecs
     matchvecct = zeros(Int64, length(compsum.obsvecct))
@@ -40,7 +40,7 @@ function counts_matches(mrows::Array{G, 1},
 end
 
 function counts_matches(C::LinkMatrix{G},
-                                      compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+                        compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
     
     #count occurences of each observation in obsvecs
     matchvecct = zeros(Int64, length(compsum.obsvecct))
@@ -76,12 +76,13 @@ function counts_matches(C::LinkMatrix{G},
 end
 
 function weights_vector(pM::Array{T, 1},
-                                            pU::Array{T, 1},
-                                            compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <: AbstractFloat
+                        pU::Array{T, 1},
+                        compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                        comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
     weightinc = log.(pM) - log.(pU)
     weightvec = zeros(Float64, length(compsum.obsvecct))
 
-    for jj in 1:length(weightvec), ii in 1:compsum.ncomp
+    for jj in 1:length(weightvec), ii in comps
         if compsum.obsvecs[ii, jj] != 0
             weightvec[jj] += weightinc[compsum.cadj[ii] + compsum.obsvecs[ii, jj]]
         end
@@ -91,9 +92,9 @@ function weights_vector(pM::Array{T, 1},
 end
 
 function penalized_weights_vector(pM::Array{T, 1},
-                                                      pU::Array{T, 1},
-                                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                                      penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+                                  pU::Array{T, 1},
+                                  compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                  penalty::AbstractFloat = 0.0) where T <: AbstractFloat
     weightvec = weights_vector(pM, pU, compsum)
     for ii in 1:length(weightvec)
         if weightvec[ii] > penalty
@@ -106,12 +107,13 @@ function penalized_weights_vector(pM::Array{T, 1},
 end
     
 function weights_vector_integer(pM::Array{T, 1},
-                                                    pU::Array{T, 1},
-                                                    compsum::ComparisonSummary) where T <: AbstractFloat
+                                pU::Array{T, 1},
+                                compsum::ComparisonSummary,
+                                comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
     weightinc = log.(pM) - log.(pU)
     weightvec = zeros(Float64, length(compsum.obsvecct))
 
-    for jj in 1:length(weightvec), ii in 1:compsum.ncomp
+    for jj in 1:length(weightvec), ii in comps
         if compsum.obsvecs[ii, jj] != 0
             weightvec[jj] += weightinc[compsum.cadj[ii] + compsum.obsvecs[ii, jj]]
         end
@@ -128,26 +130,26 @@ based on the storred array indicies.  Missing do not contribute to the weights a
 ignorability.
 """
 function weights_matrix(pM::Array{T, 1},
-                                            pU::Array{T, 1},
-                                            compsum::ComparisonSummary) where T <: AbstractFloat
+                        pU::Array{T, 1},
+                        compsum::ComparisonSummary) where T <: AbstractFloat
     weightvec = weights_vector(pM, pU, compsum)
     return weightvec[compsum.obsidx]
 end
 
 function weights_matrix(pM::Array{T, 1},
-                                            pU::Array{T, 1},
-                                            compsum::SparseComparisonSummary) where T <: AbstractFloat
+                        pU::Array{T, 1},
+                        compsum::SparseComparisonSummary) where T <: AbstractFloat
     weightvec = weights_vector(pM, pU, compsum)
     return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, weightvec[compsum.obsidx.nzval])
 end
 
 function weights_matrix(weightvec::Array{T, 1},
-                                            compsum::ComparisonSummary) where T <: Real
+                        compsum::ComparisonSummary) where T <: Real
     return weightvec[compsum.obsidx]
 end
 
 function weights_matrix(weightvec::Array{T, 1},
-                                            compsum::SparseComparisonSummary) where T <: Real
+                        compsum::SparseComparisonSummary) where T <: Real
     return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, weightvec[compsum.obsidx.nzval])
 end
 
@@ -161,12 +163,13 @@ observed comparison and then mapping based on the storred array indicies.  Missi
 not contribute to the weights assuming ignorability.
 """
 function maximum_weights_vector(pM::Array{T, 2},
-                                                    pU::Array{T, 2},
-                                                    compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <: AbstractFloat
+                                pU::Array{T, 2},
+                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
     weightinc = log.(pM) - log.(pU)
     weightmat = zeros(T, length(compsum.obsvecct), size(weightinc, 1))
 
-    for jj in 1:length(compsum.obsvecct), ii in 1:compsum.ncomp
+    for jj in 1:length(compsum.obsvecct), ii in comps
         if compsum.obsvecs[ii, jj] != 0
             for kk in 1:size(weightinc, 1)
                 weightmat[jj, kk] += weightinc[kk, compsum.cadj[ii] + compsum.obsvecs[ii, jj]]
