@@ -11,12 +11,12 @@ function bipartite_cluster(linkArray::A) where A <: AbstractArray{Bool, 2}
     colLabels = zeros(Int64, m)
     rowUnassigned = trues(n)
     colUnassigned = trues(m)
-    rowQ = Queue(Int64)
-    colQ = Queue(Int64)
+    rowQ = Queue{Int64}()
+    colQ = Queue{Int64}()
     
     maxLabel = 0
     nextCol = 1
-    while nextCol > 0 && nextCol <= m
+    while nextCol != nothing && nextCol <= m
         
         ##Mark column
         colUnassigned[nextCol] = false
@@ -84,12 +84,12 @@ function bipartite_cluster(weightArray::Array{<:AbstractFloat, 2}, threshold::Ab
     colLabels = zeros(Int64, m)
     rowUnassigned = trues(n)
     colUnassigned = trues(m)
-    rowQ = Queue(Int64)
-    colQ = Queue(Int64)
+    rowQ = Queue{Int64}()
+    colQ = Queue{Int64}()
     
     maxLabel = 0
     nextCol = 1
-    while nextCol > 0 && nextCol <= m
+    while nextCol != nothing && nextCol <= m
         
         ##Mark column
         colUnassigned[nextCol] = false
@@ -145,21 +145,21 @@ end
 
 
 function bipartite_cluster(linkArray::A) where A <: SparseMatrixCSC{Bool}
-    transposeArray = linkArray'
+    transposeArray = permutedims(linkArray, (2,1))
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
     colLabels = zeros(Int64, m)
     rowUnassigned = trues(n)
     colUnassigned = trues(m)
-    rowQ = Queue(Int64)
-    colQ = Queue(Int64)
+    rowQ = Queue{Int64}()
+    colQ = Queue{Int64}()
 
     rows = rowvals(linkArray)
     cols = rowvals(transposeArray)
     
     maxLabel = 0
     nextCol = 1
-    while nextCol > 0 && nextCol <= m
+    while nextCol != nothing && nextCol <= m
         
         ##Mark column
         colUnassigned[nextCol] = false
@@ -213,21 +213,21 @@ function bipartite_cluster(linkArray::A) where A <: SparseMatrixCSC{Bool}
 end
 
 function bipartite_cluster(linkArray::SparseMatrixCSC{T}, threshold::T) where T <: AbstractFloat
-    transposeArray = linkArray'
+    transposeArray = permutedims(linkArray, (2,1))
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
     colLabels = zeros(Int64, m)
     rowUnassigned = trues(n)
     colUnassigned = trues(m)
-    rowQ = Queue(Int64)
-    colQ = Queue(Int64)
+    rowQ = Queue{Int64}()
+    colQ = Queue{Int64}()
 
     rows = rowvals(linkArray)
     cols = rowvals(transposeArray)
     
     maxLabel = 0
     nextCol = 1
-    while nextCol > 0 && nextCol <= m
+    while nextCol != nothing && nextCol <= m
         
         ##Mark column
         colUnassigned[nextCol] = false
@@ -313,12 +313,12 @@ function bipartite_cluster_sparseblock(linkArray::A, row2colstart::Array{G, 1}, 
     colLabels = zeros(Int64, m)
     rowUnassigned = trues(n)
     colUnassigned = trues(m)
-    rowQ = Queue(Int64)
-    colQ = Queue(Int64)
+    rowQ = Queue{Int64}()
+    colQ = Queue{Int64}()
     
     maxLabel = 0
     nextCol = 1
-    while nextCol > 0 && nextCol <= m
+    while nextCol != nothing && nextCol <= m
         
         ##Mark column
         colUnassigned[nextCol] = false
@@ -381,12 +381,12 @@ function bipartite_cluster_sparseblock(linkArray::A, threshold::T, row2colstart:
     colLabels = zeros(Int64, m)
     rowUnassigned = trues(n)
     colUnassigned = trues(m)
-    rowQ = Queue(Int64)
-    colQ = Queue(Int64)
+    rowQ = Queue{Int64}()
+    colQ = Queue{Int64}()
     
     maxLabel = 0
     nextCol = 1
-    while nextCol > 0 && nextCol <= m
+    while nextCol != nothing && nextCol <= m
         
         ##Mark column
         colUnassigned[nextCol] = false
@@ -455,8 +455,8 @@ function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Int
     rowIndicies = Dict{Int64, Array{Int64, 1}}()
     colIndicies = Dict{Int64, Array{Int64, 1}}()
     for kk in 1:maxLabel0
-        rowIndicies[kk] = Array{Int64}(0)
-        colIndicies[kk] = Array{Int64}(0)
+        rowIndicies[kk] = Array{Int64}(undef, 0)
+        colIndicies[kk] = Array{Int64}(undef, 0)
     end
     
     #get mapping from components to indicies
@@ -534,8 +534,8 @@ function iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::In
     rowIndicies = Dict{Int64, Array{Int64, 1}}()
     colIndicies = Dict{Int64, Array{Int64, 1}}()
     for kk in 1:maxLabel0
-        rowIndicies[kk] = Array{Int64}(0)
-        colIndicies[kk] = Array{Int64}(0)
+        rowIndicies[kk] = Array{Int64}(undef, 0)
+        colIndicies[kk] = Array{Int64}(undef, 0)
     end
     
     #get mapping from components to indicies
@@ -561,9 +561,16 @@ function iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::In
             rowLabels, colLabels, maxLabel = bipartite_cluster(linkArray[clusterRows, clusterCols], clusterThresholds0[kk] + incr)
             #possible results - (1) no clusters, (2) only one smaller cluster, (3) >1 cluster
 
-            rowIndicies[kk] = Array{Int64}(0)
-            colIndicies[kk] = Array{Int64}(0)
+            rowIndicies[kk] = Array{Int64}(undef, 0)
+            colIndicies[kk] = Array{Int64}(undef, 0)
 
+            if maxLabel > 1
+                for clust in (maxLabel0 + 1):(maxLabel0 + maxLabel - 1)
+                    rowIndicies[clust] = Array{Int64}(undef, 0)
+                    colIndicies[clust] = Array{Int64}(undef, 0)
+                end
+            end
+            
             #update row cluster labels
             for (row, lab) in zip(clusterRows, rowLabels)
                 if lab == 0
@@ -595,7 +602,7 @@ function iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::In
                 warn("component with $(length(clusterRows)) rows and $(length(clusterCols)) columns could not be subdivided, consider using a smaller increment.")
 
                 #reset cluster indicies so that there are no gaps in the numbering
-                for clust in kk:maxLabel0
+                for clust in kk:(maxLabel0 - 1)
                     rowIndicies[clust] = rowIndicies[clust + 1]
                     colIndicies[clust] = colIndicies[clust + 1]
                 end
