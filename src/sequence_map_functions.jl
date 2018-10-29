@@ -1,7 +1,7 @@
 function next_penalty(pM::Array{T, 1},
-                                          pU::Array{T, 1},
-                                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                          penalty0::AbstractFloat, mininc::AbstractFloat = 0.0) where T <: AbstractFloat
+                      pU::Array{T, 1},
+                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                      penalty0::AbstractFloat, mininc::AbstractFloat = 0.0) where T <: AbstractFloat
     wv = sort!(weights_vector(pM, pU, compsum))
     ii = findfirst(x -> (x - penalty0) > mininc, wv)
     if ii == 0
@@ -14,11 +14,11 @@ function next_penalty(pM::Array{T, 1},
 end
 
 function next_penalty(mrows::Array{G, 1},
-                                                        mcols::Array{G, 1},
-                                                        pM::Array{T, 1},
-                                                        pU::Array{T, 1},
-                                                        compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                                        penalty0::AbstractFloat, mininc::AbstractFloat = 0.0) where {G <: Integer, T <: AbstractFloat}
+                      mcols::Array{G, 1},
+                      pM::Array{T, 1},
+                      pU::Array{T, 1},
+                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                      penalty0::AbstractFloat, mininc::AbstractFloat = 0.0) where {G <: Integer, T <: AbstractFloat}
     matchobs = falses(length(compsum.obsvecct))
     for (ii, jj) in zip(mrows, mcols)
         if !matchobs[compsum.obsidx[ii, jj]]
@@ -45,15 +45,15 @@ end
     map_solver_iter(pM0, pU0, comparisonSummary, [priorM], [priorU], penaltyRng; maxIter) -> matchRows, matchColumns, pM, pU, iterations
 """
 function map_solver_iter(pM0::Array{G, 1},
-                                                        pU0::Array{G, 1},
-                                                        compsum::ComparisonSummary{<:Integer, <:Integer},
-                                                        priorM::Array{T, 1},
-                                                        priorU::Array{T, 1},
-                                                        penaltyRng::AbstractRange;
-                                                        maxIter::Integer = 100,
-                                                        verbose::Bool = false,
-                                                        logfile::String = "log.txt",
-                                                        logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+                         pU0::Array{G, 1},
+                         compsum::ComparisonSummary{<:Integer, <:Integer},
+                         priorM::Array{T, 1},
+                         priorU::Array{T, 1},
+                         penaltyRng::AbstractRange;
+                         maxIter::Integer = 100,
+                         verbose::Bool = false,
+                         logfile::String = "log.txt",
+                         logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
     #Initialize variables
     npenalty = length(penaltyRng)
     outM = Array{G}(npenalty, length(pM0))
@@ -405,17 +405,17 @@ function map_solver_search_auction(pM0::Array{G, 1},
 end
 
 function map_solver_search_auction_cluster(pM0::Array{G, 1},
-                                                                          pU0::Array{G, 1},
-                                                                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                                                          priorM::Array{T, 1},
-                                                                          priorU::Array{T, 1},
-                                                                          penalty0::Real = 0.0,
-                                                                          mininc::Real = 0.0,
-                                                                          εscale::T = 0.2;
-                                                                          maxIter::Integer = 100,
-                                                                          verbose::Bool = false,
-                                                                          logfile::String = "log.txt",
-                                                                          logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+                                           pU0::Array{G, 1},
+                                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                           priorM::Array{T, 1},
+                                           priorU::Array{T, 1},
+                                           penalty0::Real = 0.0,
+                                           mininc::Real = 0.0,
+                                           εscale::T = 0.2;
+                                           maxIter::Integer = 100,
+                                           verbose::Bool = false,
+                                           logfile::String = "log.txt",
+                                           logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
     ##Modes are found using pseudo counts of αᵢ - 1
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))

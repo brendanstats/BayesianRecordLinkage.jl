@@ -497,20 +497,23 @@ function max_C_auction_cluster(pM::Array{T, 1},
 end
 
 function max_C_auction_cluster(pM::Array{T, 1},
-                                                   pU::Array{T, 1},
-                                                   compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                                   r2c::Array{<:Integer, 1},
-                                                   c2r::Array{<:Integer, 1},
-                                                   rowCosts::Array{T, 1},
-                                                   colCosts::Array{T, 1},
-                                                   prevw::Array{T, 1},
-                                                   prevmargin::AbstractFloat,
-                                                   penalty::AbstractFloat = 0.0,
-                                                   εscale::AbstractFloat = 0.2;
-                                                   verbose::Bool = false) where T <: AbstractFloat
+                               pU::Array{T, 1},
+                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                               r2c::Array{<:Integer, 1},
+                               c2r::Array{<:Integer, 1},
+                               rowCosts::Array{T, 1},
+                               colCosts::Array{T, 1},
+                               prevw::Array{T, 1},
+                               prevmargin::AbstractFloat,
+                               penalty::AbstractFloat = 0.0,
+                               εscale::AbstractFloat = 0.2;
+                               verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
     w = penalized_weights_vector(pM, pU, compsum, penalty)
+    if maximum(w) <= zero(T)
+        return Int64[], Int64[], r2c, c2r, rowCosts, colCosts, w, 0.0
+    end
     weightMat = dropzeros(sparse(penalized_weights_matrix(w, compsum)))
     rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
     concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
@@ -631,11 +634,11 @@ function max_C_auction_cluster(pM::Array{T, 1},
 end
 
 function max_C_sparseauction_cluster(pM::Array{T, 1},
-                                                         pU::Array{T, 1},
-                                                         compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                                         penalty::AbstractFloat = 0.0,
-                                                         εscale::AbstractFloat = 0.2;
-                                                         verbose::Bool = false) where T <: AbstractFloat
+                                     pU::Array{T, 1},
+                                     compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                     penalty::AbstractFloat = 0.0,
+                                     εscale::AbstractFloat = 0.2;
+                                     verbose::Bool = false) where T <: AbstractFloat
     
     ##Compute weights
     w = penalized_weights_vector(pM, pU, compsum, penalty)
