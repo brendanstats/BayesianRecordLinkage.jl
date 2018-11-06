@@ -3,13 +3,26 @@ function next_penalty(pM::Array{T, 1},
                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
                       penalty0::AbstractFloat, mininc::AbstractFloat = 0.0) where T <: AbstractFloat
     wv = sort!(weights_vector(pM, pU, compsum))
-    ii = findfirst(x -> (x - penalty0) > mininc, wv)
-    if ii == 0
-        return wv[end], 0
-    elseif ii < length(wv)
-        return 0.95 * wv[ii] + 0.05 * wv[ii + 1], length(wv) - ii
+    if iszero(mininc)
+        error("mininc must be non-zero")
+    elseif mininc > 0
+        ii = findfirst(x -> (x - penalty0) > mininc, wv)
+        if ii == 0
+            return wv[end], 0
+        elseif ii < length(wv)
+            return 0.95 * wv[ii] + 0.05 * wv[ii + 1], length(wv) - ii
+        else
+            return wv[ii], 1
+        end
     else
-        return wv[ii], 1
+        ii = findlast(x -> x <= (mininc + penalty0), wv)
+        if ii == 0
+            return wv[1], length(w)
+        elseif ii < length(wv)
+            return 0.95 * wv[ii] + 0.05 * wv[ii + 1], ii
+        else
+            return wv[ii], 0
+        end
     end
 end
 
@@ -30,14 +43,27 @@ function next_penalty(mrows::Array{G, 1},
         return penalty0, 0
    end
     
-    wv = sort!(weights_vector(pM, pU, compsum)[matchobs])
-    ii = findfirst(x -> (x - penalty0) > mininc, wv)
-    if ii == 0
-        return wv[end], 0
-    elseif ii < length(wv)
-        return 0.95 * wv[ii] + 0.05 * wv[ii + 1], length(wv) - ii
+    wv = sort!(weights_vector(pM, pU, compsum))
+    if iszero(mininc)
+        error("mininc must be non-zero")
+    elseif mininc > 0
+        ii = findfirst(x -> (x - penalty0) > mininc, wv)
+        if ii == 0
+            return wv[end], 0
+        elseif ii < length(wv)
+            return 0.95 * wv[ii] + 0.05 * wv[ii + 1], length(wv) - ii
+        else
+            return wv[ii], 1
+        end
     else
-        return wv[ii], 1
+        ii = findlast(x -> x <= (mininc + penalty0), wv)
+        if ii == 0
+            return wv[1], length(w)
+        elseif ii < length(wv)
+            return 0.95 * wv[ii] + 0.05 * wv[ii + 1], ii
+        else
+            return wv[ii], 0
+        end
     end
 end
 
@@ -428,6 +454,19 @@ function map_solver_search_auction_cluster(pM0::Array{G, 1},
     penalties = Array{typeof(penalty)}(0)
     outMatches = Dict{Int,Tuple{Array{Int,1},Array{Int,1}}}()
 
+    tractable = false
+    while !tractable
+        w = penalized_weights_vector(pM0, pU0, compsum, penalty)
+        weightMat = dropzeros(sparse(penalized_weights_matrix(w, compsum)))
+        rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
+        concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
+        if maximum(concomp.rowcounts[2:end] .* concomp.colcounts[2:end]) < 1000000
+            tractable = true
+        else
+            penalty += max(mininc, 0.01)
+        end
+    end
+    
     #Solver for first value
     mrows, mcols, r2c, c2r, rowCosts, colCosts, prevw, prevmargin = max_C_auction_cluster(pM0, pU0, compsum, penalty, εscale, verbose = verbose)
     pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
@@ -444,7 +483,8 @@ function map_solver_search_auction_cluster(pM0::Array{G, 1},
     end
     
     ii = 0
-    while nabove > 1
+    aboveLower = true
+    while nabove > 1 && aboveLower
         ii += 1
         iter = 0
         while iter < maxIter
@@ -453,6 +493,23 @@ function map_solver_search_auction_cluster(pM0::Array{G, 1},
             if logflag
                 open(logfile, "a") do f
                     write(f, Dates.format(now(), "yyyy-mm-dd HH:MM:SS"), "; Iteration: $iter, matches: $(length(mrows))\n")
+                end
+            end
+
+            tractable = false
+            while !tractable
+                w = penalized_weights_vector(pM, pU, compsum, penalty)
+                weightMat = dropzeros(sparse(penalized_weights_matrix(w, compsum)))
+                rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
+                concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
+                if maximum(concomp.rowcounts[2:end] .* concomp.colcounts[2:end]) < 1000000
+                    tractable = true
+                else
+                    penalty += max(mininc, 0.01)
+                    iter = 1
+                    if mininc < 0.0
+                        aboveLower = false
+                    end
                 end
             end
             
