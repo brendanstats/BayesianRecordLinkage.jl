@@ -328,8 +328,9 @@ Compuate a cost matrix to transform maximization problem into minimiation proble
 function compute_costs(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::ComparisonSummary,
-                       penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum) .- penalty
+                       penalty::AbstractFloat = 0.0,
+                       comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+    weightvec = weights_vector(pM, pU, compsum, comps) .- penalty
     maxcost = maximum(weightvec)
     costvec = fill(maxcost, length(weightvec))
     for ii in 1:length(weightvec)
@@ -343,8 +344,9 @@ end
 function compute_costs(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::SparseComparisonSummary,
-                       penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum) .- penalty
+                       penalty::AbstractFloat = 0.0,
+                       comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+    weightvec = weights_vector(pM, pU, compsum, comps) .- penalty
     maxcost = maximum(weightvec)
     costvec = fill(maxcost, length(weightvec))
     for ii in 1:length(weightvec)
@@ -361,15 +363,16 @@ end
 function compute_costs_shrunk(pM::Array{T, 1},
                               pU::Array{T, 1},
                               compsum::ComparisonSummary,
-                              penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    costmatrix, maxcost = compute_costs(pM, pU, compsum, penalty)
+                              penalty::AbstractFloat = 0.0,
+                              comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+    costmatrix, maxcost = compute_costs(pM, pU, compsum, penalty, comps)
     return costmatrix .- minimum(costmatrix, 2), maxcost
 end
 
 function compute_costs_integer(pM::Array{T, 1},
-                                                   pU::Array{T, 1},
-                                                   compsum::ComparisonSummary,
-                                                   penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+                               pU::Array{T, 1},
+                               compsum::ComparisonSummary,
+                               penalty::AbstractFloat = 0.0) where T <: AbstractFloat
     weightvec = Int64.(round.((weights_vector(pM, pU, compsum) .- penalty) .* 1.0e14))
     maxcost = ceil(maximum(weightvec))
     costvec = fill(maxcost, length(weightvec))
@@ -386,11 +389,12 @@ function bayesrule_posterior(w::Array{T, 1}, p::T) where T <: AbstractFloat
 end
 
 function threshold_sensitivity(pM::Array{T, 2},
-                                                   pU::Array{T, 2},
-                                                   compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <: AbstractFloat
-    obsW = sort(maximum_weights_vector(pM, pU, compsum))
+                               pU::Array{T, 2},
+                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                               comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+    obsW = sort(maximum_weights_vector(pM, pU, compsum, comps))
     breaksW = get_mids(obsW)
-    maxW = maximum_weights_matrix(pM, pU, compsum)
+    maxW = maximum_weights_matrix(pM, pU, compsum, comps)
     ccsummary = mapreduce(vcat, breaksW) do w
         rowLabels, colLabels, maxLabel = bipartite_cluster(maxW, w)
         cc = ConnectedComponents(rowLabels, colLabels, maxLabel)
