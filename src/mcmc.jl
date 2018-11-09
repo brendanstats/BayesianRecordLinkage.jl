@@ -9,8 +9,8 @@ function dirichlet_draw(matchcounts::Array{<:Integer, 1},
     paramM = matchcounts + priorM
     paramU = nonmatchcounts + priorU
 
-    pM = Array{Float64}(length(priorM))
-    pU = Array{Float64}(length(priorU))
+    pM = Array{Float64}(undef, length(priorM))
+    pU = Array{Float64}(undef, length(priorU))
     
     startidx = 1
     for ii in 1:length(compsum.nlevels)
@@ -45,9 +45,9 @@ function mh_gibbs_chain(
     else
         CArray = zeros(Int64, C0.nrow, outerIter)
     end
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = zeros(Int64, outerIter)
 
     ##Initial States
@@ -148,9 +148,9 @@ function mh_gibbs_chain(
     nblocks = length(blockRanges)
     blockRows = map(x -> size(x)[1], blockRanges)
     blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = zeros(Int64, outerIter, nblocks)
     
     ##Initial States
@@ -268,9 +268,9 @@ function mh_gibbs_count(
     nblocks = length(blockRanges)
     blockRows = map(x -> size(x)[1], blockRanges)
     blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = zeros(Int64, nblocks)
     
     ##Initial States
@@ -414,9 +414,9 @@ function mh_gibbs_chain_inplace(
     end
     
     #CArray = Dict{Int64,Array{Int64,2}}()
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = 0
     
     ##Initial States
@@ -495,9 +495,9 @@ function mh_gibbs_chain_inplace(
     nblocks = length(blockRanges)
     blockRows = map(x -> size(x)[1], blockRanges)
     blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = zeros(Int64, nblocks)
     
     ##Initial States
@@ -577,9 +577,9 @@ function mh_gibbs_count_inplace(
     else
         CArray = zeros(Int64, C0.nrow, C0.ncol)
     end
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = 0
     
     ##Initial States
@@ -662,9 +662,9 @@ function mh_gibbs_count_inplace(
     nblocks = length(blockRanges)
     blockRows = map(x -> size(x)[1], blockRanges)
     blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = zeros(Int64, nblocks)
     
     ##Initial States
@@ -758,9 +758,9 @@ function mh_gibbs_count_inplace(
     nblocks = length(blockRanges)
     blockRows = map(x -> size(x)[1], blockRanges)
     blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(outerIter)
-    MArray = Array{Float64}(length(priorM), outerIter)
-    UArray = Array{Float64}(length(priorU), outerIter)
+    nlinkArray = Array{Int64}(undef, outerIter)
+    MArray = Array{Float64}(undef, length(priorM), outerIter)
+    UArray = Array{Float64}(undef, length(priorU), outerIter)
     transC = zeros(Int64, nblocks)
 
     ##Add counting for row and column type

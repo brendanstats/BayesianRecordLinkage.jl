@@ -385,7 +385,7 @@ end
 function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
                       countDeltas::Array{<:Integer, 2}, logDiff::Array{<:AbstractFloat, 1},
                       balance_function::Function = identity_balance)
-    moveweights = Array{Float64}(C.nrow * C.ncol)
+    moveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
         idx = sub2ind((C.nrow, C.ncol), ii, jj)
         countdelta, movetype = randomwalk1_countdelta(ii, jj, C, compsum, countDeltas)
@@ -404,7 +404,7 @@ function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseCom
                       countDeltas::Array{<:Integer, 2}, logDiff::Array{<:AbstractFloat, 1},
                       logpdfC::Function, ratioPrior::Bool,
                       balance_function::Function = identity_balance)
-    moveweights = Array{Float64}(C.nrow * C.ncol)
+    moveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
         idx = sub2ind((C.nrow, C.ncol), ii, jj)
         propC = randomwalk1_move(ii, jj, C)
@@ -423,7 +423,7 @@ end
 function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
                       loglikMargin::Array{<:AbstractFloat, 1},
                       logpdfC::Function, balance_function::Function = identity_balance)
-    moveweights = Array{Float64}(C.nrow * C.ncol)
+    moveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
         idx = sub2ind((C.nrow, C.ncol), ii, jj)
         loglikdelta, movetype = randomwalk1_loglikdelta(ii, jj, C, compsum, loglikMargin)
@@ -445,7 +445,7 @@ end
 function log_move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
                           loglikMargin::Array{<:AbstractFloat, 1},
                           logpdfC::Function, log_balance_function::Function = lidentity_balance)
-    lmoveweights = Array{Float64}(C.nrow * C.ncol)
+    lmoveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
         idx = sub2ind((C.nrow, C.ncol), ii, jj)
         loglikdelta, movetype = randomwalk1_loglikdelta(ii, jj, C, compsum, loglikMargin)
@@ -470,7 +470,7 @@ function move_weights(rng::CartesianIndices{2},
                       balance_function::Function = identity_balance)
     startrow = first(rng).I[1] - 1
     startcol = first(rng).I[2] - 1
-    moveweights = Array{Float64}(length(rng))
+    moveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
         idx = sub2ind(size(rng), ii, jj)
         countdelta, movetype = randomwalk1_countdelta(startrow + ii,
@@ -494,7 +494,7 @@ function move_weights(rng::CartesianIndices{2},
                       balance_function::Function = identity_balance)
     startrow = first(rng).I[1] - 1
     startcol = first(rng).I[2] - 1
-    moveweights = Array{Float64}(length(rng))
+    moveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
         idx = sub2ind(size(rng), ii, jj)
         propC = randomwalk1_move(ii, jj, C)
@@ -519,7 +519,7 @@ function move_weights(rng::CartesianIndices{2},
 
     startrow = first(rng).I[1] - 1
     startcol = first(rng).I[2] - 1
-    moveweights = Array{Float64}(length(rng))
+    moveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
         idx = sub2ind(size(rng), ii, jj)
         loglikdelta, movetype = randomwalk1_loglikdelta(startrow + ii, startcol + jj, C, compsum, loglikMargin)
@@ -545,7 +545,7 @@ function log_move_weights(rng::CartesianIndices{2},
     
     startrow = first(rng).I[1] - 1
     startcol = first(rng).I[2] - 1
-    lmoveweights = Array{Float64}(length(rng))
+    lmoveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
         idx = sub2ind(size(rng), ii, jj)
         loglikdelta, movetype = randomwalk1_loglikdelta(startrow + ii, startcol + jj, C, compsum, loglikMargin)
@@ -1140,7 +1140,7 @@ function singlerow_gibbs(row::Integer, cols::Array{<:Integer}, C::LinkMatrix,
         lpriorratio0 = logpdfC(-1, C)
         lpriorratio1 = logpdfC(0, C)
     end
-    loglikes = Array{Float64}(length(cols) + 1)
+    loglikes = Array{Float64}(undef, length(cols) + 1)
     loglikes[1] = lpriorratio0
     for (jj, col) in enumerate(cols)
         loglikes[jj + 1] = loglikMargin[compsum.obsidx[row, col]] + lpriorratio1

@@ -54,8 +54,8 @@ end
 
 ##Construct 
 function comparison_variables(comparisons::BitArray{3}, nrow::Int64, ncol::Int64, ncomp::Int64)
-    obsidx = Array{Int64}(nrow, ncol)
-    obsvecct = Array{Int64}(0) 
+    obsidx = Array{Int64}(undef, nrow, ncol)
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{BitArray{1}, Int64}()
     for jj in 1:ncol, ii in 1:nrow
         if haskey(idxDict, comparisons[ii, jj, :])
@@ -77,8 +77,8 @@ function comparison_variables(comparisons::BitArray{3}, nrow::Int64, ncol::Int64
 end
 
 function comparison_variables(comparisons::Array{Bool, 3}, nrow::Int64, ncol::Int64, ncomp::Int64)
-    obsidx = Array{Int64}(nrow, ncol)
-    obsvecct = Array{Int64}(0) 
+    obsidx = Array{Int64}(undef, nrow, ncol)
+    obsvecct = Array{Int64}(indef, 0) 
     idxDict = Dict{Array{Bool, 1}, Int64}()
     for jj in 1:ncol, ii in 1:nrow
         if haskey(idxDict, comparisons[ii, jj, :])
@@ -100,8 +100,8 @@ function comparison_variables(comparisons::Array{Bool, 3}, nrow::Int64, ncol::In
 end
 
 function comparison_variables(comparisons::Array{G, 3}, nrow::Int64, ncol::Int64, ncomp::Int64) where G <: Integer
-    obsidx = Array{Int64}(nrow, ncol)
-    obsvecct = Array{Int64}(0) 
+    obsidx = Array{Int64}(undef, nrow, ncol)
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{Array{G, 1}, Int64}()
     for jj in 1:ncol, ii in 1:nrow
         if haskey(idxDict, comparisons[ii, jj, :])
@@ -124,8 +124,8 @@ end
 
 function comparison_variables(rows::Array{Int64, 1}, cols::Array{Int64, 1}, comparisons::Array{G, 2}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = Int64, obsType::DataType = G) where G <: Integer
 
-    obsidxvec = Array{idxType}(size(comparisons, 1))
-    obsvecct = Array{Int64}(0) 
+    obsidxvec = Array{idxType}(undef, size(comparisons, 1))
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{Array{G, 1}, Int64}()
     for ii in 1:size(comparisons, 1)
         obsvec = comparisons[ii, :]
@@ -143,7 +143,7 @@ function comparison_variables(rows::Array{Int64, 1}, cols::Array{Int64, 1}, comp
     #defined later than for non-sparse
     obsidx = sparse(rows, cols, obsidxvec, nrow, ncol)
     
-    obsvecs = Array{obsType}(ncomp, maximum(values(idxDict)))
+    obsvecs = Array{obsType}(undef, ncomp, maximum(values(idxDict)))
     for (key, value) in idxDict
         obsvecs[:, value] = key
     end
@@ -153,8 +153,8 @@ end
 
 function comparison_variables(comparisons::Array{G, 2}, nrow::Int64, ncol::Int64, ncomp::Int64; idxType::DataType = G, obsType::DataType = Int8) where G <: Integer
 
-    obsidxvec = Array{idxType}(size(comparisons, 1))
-    obsvecct = Array{Int64}(0) 
+    obsidxvec = Array{idxType}(undef, size(comparisons, 1))
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{Array{G, 1}, Int64}()
     for ii in 1:size(comparisons, 1)
         obsvec = comparisons[ii, 3:end]
@@ -172,7 +172,7 @@ function comparison_variables(comparisons::Array{G, 2}, nrow::Int64, ncol::Int64
     #defined later than for non-sparse
     obsidx = sparse(Int64.(comparisons[:, 1]), Int64.(comparisons[:, 2]), obsidxvec, nrow, ncol)
     
-    obsvecs = Array{obsType}(ncomp, maximum(values(idxDict)))
+    obsvecs = Array{obsType}(undef, ncomp, maximum(values(idxDict)))
     for (key, value) in idxDict
         obsvecs[:, value] = key
     end
@@ -187,11 +187,11 @@ function comparison_variables(filenames::Array{String, 1}, nrow::Int64, ncol::In
         nlines -= length(filenames)
     end
     
-    rows = Array{Int64}(nlines)
-    cols = Array{Int64}(nlines)
+    rows = Array{Int64}(undef, nlines)
+    cols = Array{Int64}(undef, nlines)
     obsidxvec = Array{idxType}(nlines)
 
-    obsvecct = Array{Int64}(0) 
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{Array{Int64, 1}, Int64}()
     
     idx = 0
@@ -236,7 +236,7 @@ function comparison_variables(filenames::Array{String, 1}, nrow::Int64, ncol::In
     obsidxvec = true
     
     #=
-    obsvecct = Array{Int64}(0) 
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{Array{Int64, 1}, Int64}()
     obsidx = sparse(Int64[], Int64[], idxType[], nrow, ncol)
     
@@ -288,7 +288,7 @@ function comparison_variables(filenames::Array{String, 1}, nrow::Int64, ncol::In
         #end
     end
     =#
-    obsvecs = Array{obsType}(ncomp, maximum(values(idxDict)))
+    obsvecs = Array{obsType}(undef, ncomp, maximum(values(idxDict)))
     for (key, value) in idxDict
         obsvecs[:, value] = key
     end
@@ -303,7 +303,7 @@ function comparison_variables(namelist::Array{Array{String, 1}, 1}, nrow::Int64,
         return comparison_variables(namelist[1], nrow, ncol, ncomp, idxType = idxType, obsTypeobsType, header = header, sep = sep, verbose = verbose)
     end
 
-    obsvecct = Array{Int64}(0) 
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{Array{Int64, 1}, Int64}()
     obsidx = sparse(Int64[], Int64[], idxType[], nrow, ncol)
     
@@ -314,8 +314,8 @@ function comparison_variables(namelist::Array{Array{String, 1}, 1}, nrow::Int64,
         if header
             nlines -= length(filenames)
         end
-        rows = Array{Int64}(nlines)
-        cols = Array{Int64}(nlines)
+        rows = Array{Int64}(undef, nlines)
+        cols = Array{Int64}(undef, nlines)
         obsidxvec = Array{idxType}(nlines)
 
         idx = 0
@@ -357,7 +357,7 @@ function comparison_variables(namelist::Array{Array{String, 1}, 1}, nrow::Int64,
         obsidx += sparse(rows[keep], cols[keep], obsidxvec[keep], nrow, ncol)
     end
     
-    obsvecs = Array{obsType}(ncomp, maximum(values(idxDict)))
+    obsvecs = Array{obsType}(undef, ncomp, maximum(values(idxDict)))
     for (key, value) in idxDict
         obsvecs[:, value] = key
     end
@@ -541,7 +541,7 @@ function SparseComparisonSummary(filenames::Array{Array{String, 1}, 1}, nrow::In
 end
 
 function extract_integers(s::String, nobs::Integer, idxType::DataType, obsType::DataType, sep::Char)
-    obs = Array{obsType}(nobs)
+    obs = Array{obsType}(undef, nobs)
     idx1 = start(s)
     n = endof(s)
     r = search(s, sep, idx1)
@@ -631,7 +631,7 @@ function stream_comparisonsummary(filename::String, nrow::Int64, ncol::Int64, nl
     end
 
     ##Combine observed vectors in array
-    obsvecs = Array{obsType}(ncomp, length(obsvecct))
+    obsvecs = Array{obsType}(undef, ncomp, length(obsvecct))
     for (key, value) in idxDict
         obsvecs[:, value] = key
     end

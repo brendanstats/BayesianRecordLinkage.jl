@@ -82,9 +82,9 @@ function map_solver_iter(pM0::Array{G, 1},
                          logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
     #Initialize variables
     npenalty = length(penaltyRng)
-    outM = Array{G}(npenalty, length(pM0))
-    outU = Array{G}(npenalty, length(pU0))
-    outIter = Array{Int64}(npenalty)
+    outM = Array{G}(undef, npenalty, length(pM0))
+    outU = Array{G}(undef, npenalty, length(pU0))
+    outIter = Array{Int64}(undef, npenalty)
     
     #Solver for first value
     mrows, mcols, pM, pU, iter = map_solver(pM0, pU0, compsum, priorM, priorU, penaltyRng[1], maxIter = maxIter)
@@ -130,9 +130,9 @@ function map_solver_iter_cluster(pM0::Array{G, 1},
                                  logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
     #Initialize variables
     npenalty = length(penaltyRng)
-    outM = Array{G}(npenalty, length(pM0))
-    outU = Array{G}(npenalty, length(pU0))
-    outIter = Array{Int64}(npenalty)
+    outM = Array{G}(undef, npenalty, length(pM0))
+    outU = Array{G}(undef, npenalty, length(pU0))
+    outIter = Array{Int64}(undef, npenalty)
     
     #Solver for first value
     mrows, mcols, pM, pU, iter = map_solver_cluster(pM0, pU0, compsum, priorM, priorU, penaltyRng[1], maxIter = maxIter, verbose = verbose)
@@ -168,15 +168,16 @@ end
 
 
 function map_solver_iter_initialize(pM0::Array{G, 1},
-                                                                   pU0::Array{G, 1},
-                                                                   compsum::ComparisonSummary{<:Integer, <:Integer},
-                                                                   priorM::Array{T, 1},
-                                                                   priorU::Array{T, 1},
-                                                                   penaltyRng::AbstractRange;
-                                                                   maxIter::Integer = 100,
-                                                                   verbose::Bool = false,
-                                                                   logfile::String = "log.txt",
-                                                                   logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+                                    pU0::Array{G, 1},
+                                    compsum::ComparisonSummary{<:Integer, <:Integer},
+                                    priorM::Array{T, 1},
+                                    priorU::Array{T, 1},
+                                    penaltyRng::AbstractRange;
+                                    maxIter::Integer = 100,
+                                    verbose::Bool = false,
+                                    logfile::String = "log.txt",
+                                    logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+    
     ##Modes are found using pseudo counts of αᵢ - 1
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
@@ -185,10 +186,10 @@ function map_solver_iter_initialize(pM0::Array{G, 1},
     
     #Initialize variables
     npenalty = length(penaltyRng)
-    outM = Array{G}(npenalty, length(pM0))
-    outU = Array{G}(npenalty, length(pU0))
-    outIter = Array{Int64}(npenalty)
-    outMatches = Dict{Int64,Tuple{Array{Int64,1},Array{Int64,1}}}()
+    outM = Array{G}(undef, npenalty, length(pM0))
+    outU = Array{G}(undef, npenalty, length(pU0))
+    outIter = Array{Int64}(undef, npenalty)
+    outMatches = Dict{Int64, Tuple{Array{Int64, 1}, Array{Int64, 1}}}()
     #mrows, mcols, rows2cols, rowOffsets, colOffsets, maxcost = max_C_offsets(pM, pU, compsum, penaltyRng[1])
     currmrows, currmcols, rows2cols, rowOffsets, colOffsets, maxcost = max_C_offsets(pM, pU, compsum, penaltyRng[1])
     for (ii, penalty) in enumerate(IndexLinear(), penaltyRng)
@@ -241,16 +242,17 @@ function map_solver_iter_initialize(pM0::Array{G, 1},
 end
 
 function map_solver_search(pM0::Array{G, 1},
-                                                          pU0::Array{G, 1},
-                                                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                                          priorM::Array{T, 1},
-                                                          priorU::Array{T, 1},
-                                                          penalty0::Real = 0.0,
-                                                          mininc::Real = 0.0;
-                                                          maxIter::Integer = 100,
-                                                          verbose::Bool = false,
-                                                          logfile::String = "log.txt",
-                                                          logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+                           pU0::Array{G, 1},
+                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                           priorM::Array{T, 1},
+                           priorU::Array{T, 1},
+                           penalty0::Real = 0.0,
+                           mininc::Real = 0.0;
+                           maxIter::Integer = 100,
+                           verbose::Bool = false,
+                           logfile::String = "log.txt",
+                           logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+    
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
     
@@ -293,16 +295,17 @@ function map_solver_search(pM0::Array{G, 1},
 end
 
 function map_solver_search_cluster(pM0::Array{G, 1},
-                                                                  pU0::Array{G, 1},
-                                                                  compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                                                  priorM::Array{T, 1},
-                                                                  priorU::Array{T, 1},
-                                                                  penalty0::Real = 0.0,
-                                                                  mininc::Real = 0.0;
-                                                                  maxIter::Integer = 100,
-                                                                  verbose::Bool = false,
-                                                                  logfile::String = "log.txt",
-                                                                  logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+                                   pU0::Array{G, 1},
+                                   compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                   priorM::Array{T, 1},
+                                   priorU::Array{T, 1},
+                                   penalty0::Real = 0.0,
+                                   mininc::Real = 0.0;
+                                   maxIter::Integer = 100,
+                                   verbose::Bool = false,
+                                   logfile::String = "log.txt",
+                                   logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+    
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
     
@@ -346,28 +349,29 @@ function map_solver_search_cluster(pM0::Array{G, 1},
 end
 
 function map_solver_search_auction(pM0::Array{G, 1},
-                                                                  pU0::Array{G, 1},
-                                                                  compsum::ComparisonSummary{<:Integer, <:Integer},
-                                                                  priorM::Array{T, 1},
-                                                                  priorU::Array{T, 1},
-                                                                  penalty0::Real = 0.0,
-                                                                  mininc::Real = 0.0,
-                                                                  εscale::T = 0.2;
-                                                                  maxIter::Integer = 100,
-                                                                  verbose::Bool = false,
-                                                                  logfile::String = "log.txt",
-                                                                  logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+                                   pU0::Array{G, 1},
+                                   compsum::ComparisonSummary{<:Integer, <:Integer},
+                                   priorM::Array{T, 1},
+                                   priorU::Array{T, 1},
+                                   penalty0::Real = 0.0,
+                                   mininc::Real = 0.0,
+                                   εscale::T = 0.2;
+                                   maxIter::Integer = 100,
+                                   verbose::Bool = false,
+                                   logfile::String = "log.txt",
+                                   logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+    
     ##Modes are found using pseudo counts of αᵢ - 1
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
     penalty = copy(penalty0)
     
     ##Allocate variables
-    outM = Array{T}(length(pM0), 0)
-    outU = Array{T}(length(pU0), 0)
-    outIter = Array{Int}(0)
-    penalties = Array{typeof(penalty)}(0)
-    outMatches = Dict{Int,Tuple{Array{Int,1},Array{Int,1}}}()
+    outM = Array{T}(undef, length(pM0), 0)
+    outU = Array{T}(undef, length(pU0), 0)
+    outIter = Array{Int}(undef, 0)
+    penalties = Array{typeof(penalty)}(undef, 0)
+    outMatches = Dict{Int, Tuple{Array{Int, 1}, Array{Int, 1}}}()
 
     #Solver for first value
     mrows, mcols, rowCosts, colCosts, prevw, prevε, λ = max_C_auction(pM0, pU0, compsum, penalty, εscale)
@@ -448,11 +452,11 @@ function map_solver_search_auction_cluster(pM0::Array{G, 1},
     penalty = copy(penalty0)
     
     ##Allocate variables
-    outM = Array{T}(length(pM0), 0)
-    outU = Array{T}(length(pU0), 0)
-    outIter = Array{Int}(0)
-    penalties = Array{typeof(penalty)}(0)
-    outMatches = Dict{Int,Tuple{Array{Int,1},Array{Int,1}}}()
+    outM = Array{T}(undef, length(pM0), 0)
+    outU = Array{T}(undef, length(pU0), 0)
+    outIter = Array{Int}(undef, 0)
+    penalties = Array{typeof(penalty)}(undef, 0)
+    outMatches = Dict{Int, Tuple{Array{Int, 1}, Array{Int, 1}}}()
 
     tractable = false
     while !tractable

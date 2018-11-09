@@ -49,11 +49,11 @@ end
 
 function get_ranges(cc::ConnectedComponents)
     if issorted(cc.rowLabels) && issorted(cc.colLabels)
-        out = Array{CartesianRange{CartesianIndex{2}}, 1}(cc.ncomponents)
+        out = Array{CartesianIndices{2}, 1}(undef, cc.ncomponents)
         for ii in 1:cc.ncomponents
             rowrange = range(cc.cumrows[ii] + 1,cc.rowcounts[ii + 1])
             colrange = range(cc.cumcols[ii] + 1,cc.colcounts[ii + 1])
-            out[ii] = CartesianRange((rowrange, colrange))
+            out[ii] = CartesianIndices((rowrange, colrange))
         end
     else
         error("input must be sorted by row and column cluster to summarize with ranges")
