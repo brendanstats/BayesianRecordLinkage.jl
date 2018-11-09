@@ -1,10 +1,10 @@
 """
-        bipartite_cluster(linkArray) -> rowLabels, columnLabels
+bipartite_cluster(linkArray) -> rowLabels, columnLabels
 
-    Finds the connected components taking a binary edge matrix for a bipartite graph
-    and labeles all components.  Nodes that are connected to no other nodes are left
-    with a label of 0.
-    """
+Finds the connected components taking a binary edge matrix for a bipartite graph
+and labeles all components.  Nodes that are connected to no other nodes are left
+with a label of 0.
+"""
 function bipartite_cluster(linkArray::A) where A <: AbstractArray{Bool, 2}
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
@@ -71,13 +71,13 @@ function bipartite_cluster(linkArray::A) where A <: AbstractArray{Bool, 2}
 end
 
 """
-        bipartite_cluster(weightArray, [threshold]) -> rowLabels, columnLabels
+bipartite_cluster(weightArray, [threshold]) -> rowLabels, columnLabels
 
-    Finds the connected components taking a matrix of edge weights and a threshold
-    for a bipartite graph and labeles all components.  All edge weights above the
-    threshold are used to connect components.  Nodes that are connected to no other
-    nodes are left with a label of 0.  Threshold value defaults to 0.
-    """
+Finds the connected components taking a matrix of edge weights and a threshold
+for a bipartite graph and labeles all components.  All edge weights above the
+threshold are used to connect components.  Nodes that are connected to no other
+nodes are left with a label of 0.  Threshold value defaults to 0.
+"""
 function bipartite_cluster(weightArray::Array{<:AbstractFloat, 2}, threshold::AbstractFloat = 0.0)
     n, m = size(weightArray)
     rowLabels = zeros(Int64, n)

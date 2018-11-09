@@ -78,7 +78,7 @@ end
 
 function comparison_variables(comparisons::Array{Bool, 3}, nrow::Int64, ncol::Int64, ncomp::Int64)
     obsidx = Array{Int64}(undef, nrow, ncol)
-    obsvecct = Array{Int64}(indef, 0) 
+    obsvecct = Array{Int64}(undef, 0) 
     idxDict = Dict{Array{Bool, 1}, Int64}()
     for jj in 1:ncol, ii in 1:nrow
         if haskey(idxDict, comparisons[ii, jj, :])

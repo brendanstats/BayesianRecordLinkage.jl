@@ -39,6 +39,7 @@ function counts_matches(mrows::Array{G, 1},
     return matchcounts, matchobs
 end
 
+#change to count_matches(findn(C.row2col)..., compsum)?
 function counts_matches(C::LinkMatrix{G},
                         compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
     
@@ -91,35 +92,40 @@ function weights_vector(pM::Array{T, 1},
     return weightvec
 end
 
+function shrink_weights(x::G, threshold::G) where G <: Real
+    return x > threshold ? x - threshold : zero(G)
+end
+
+function shrink_weights!(x::Array{G, 1}, threshold::G) where G <: Real
+    for ii in 1:length(x)
+        x[ii] = shrink_weights(x[ii], threshold)
+    end
+    return x
+end
+
 function penalized_weights_vector(pM::Array{T, 1},
                                   pU::Array{T, 1},
                                   compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                   penalty::AbstractFloat = 0.0,
                                   comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum, comps)
-    for ii in 1:length(weightvec)
-        if weightvec[ii] > penalty
-            weightvec[ii] -= penalty
-        else
-            weightvec[ii] = 0.0
-        end
-    end
-    return weightvec
+    return shrink_weights!(weights_vector(pM, pU, compsum, comps), penalty)
 end
-    
+
 function weights_vector_integer(pM::Array{T, 1},
                                 pU::Array{T, 1},
                                 compsum::ComparisonSummary,
-                                comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    weightinc = log.(pM) - log.(pU)
-    weightvec = zeros(Float64, length(compsum.obsvecct))
+                                comps::Array{Int64, 1} = collect(1:compsum.ncomp),
+                                scale::T = 1.0e3) where T <: AbstractFloat
+    return Int64.(round.(scale .*  weights_vector(pM, pU, compsum, comps)))
+end
 
-    for jj in 1:length(weightvec), ii in comps
-        if compsum.obsvecs[ii, jj] != 0
-            weightvec[jj] += weightinc[compsum.cadj[ii] + compsum.obsvecs[ii, jj]]
-        end
-    end
-    return Int64.(round.(weightinc .* 1.0e14))
+function penalized_weights_vector_integer(pM::Array{T, 1},
+                                          pU::Array{T, 1},
+                                          compsum::ComparisonSummary,
+                                          penalty::AbstractFloat = 0.0,
+                                          comps::Array{Int64, 1} = collect(1:compsum.ncomp),
+                                          scale::T = 1.0e3) where T <: AbstractFloat
+    return Int64.(round.(scale .*  penalized_weights_vector(pM, pU, compsum, penalty, comps)))
 end
 
 """
@@ -216,8 +222,8 @@ function penalized_weights_matrix(pweightvec::Array{T, 1}, compsum::ComparisonSu
     positiveweight = pweightvec .> zero(T)
     n = sum(compsum.obsvecct[positiveweight])
     
-    rows = Array{Int64}(n)
-    cols = Array{Int64}(n)
+    rows = Array{Int64}(undef, n)
+    cols = Array{Int64}(undef, n)
     pweights = Array{T}(n)
 
     ii = 0
@@ -243,8 +249,8 @@ function penalized_weights_matrix(pweightvec::Array{T, 1}, compsum::SparseCompar
     idxvals = nonzeros(compsum.obsidx)
     idxrows = rowvals(compsum.obsidx)
     
-    rows = Array{Int64}(n)
-    cols = Array{Int64}(n)
+    rows = Array{Int64}(undef, n)
+    cols = Array{Int64}(undef, n)
     pweights = Array{T}(n)
 
     ii = 0
