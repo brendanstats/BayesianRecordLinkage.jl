@@ -26,7 +26,7 @@ function counts_matches(mrows::Array{G, 1},
     #map observation occurences to counts
     matchcounts = zeros(Int64, length(compsum.counts))
     matchobs = zeros(Int64, compsum.ncomp)
-    for (jj, ct) in enumerate(IndexLinear(), matchvecct)
+    for (jj, ct) in pairs(IndexLinear(), matchvecct)
         if ct > 0
             for ii in 1:compsum.ncomp
                 if compsum.obsvecs[ii, jj] != 0
@@ -46,13 +46,13 @@ function counts_matches(C::LinkMatrix{G},
     #count occurences of each observation in obsvecs
     matchvecct = zeros(Int64, length(compsum.obsvecct))
     if C.nrow < C.ncol
-        for (ii, jj) in enumerate(IndexLinear(), C.row2col)
+        for (ii, jj) in pairs(IndexLinear(), C.row2col)
             if jj != zero(G)
                 matchvecct[compsum.obsidx[ii, jj]] += 1
             end
         end
     else
-        for (jj, ii) in enumerate(IndexLinear(), C.col2row)
+        for (jj, ii) in pairs(IndexLinear(), C.col2row)
             if ii != zero(G)
                 matchvecct[compsum.obsidx[ii, jj]] += 1
             end
@@ -63,7 +63,7 @@ function counts_matches(C::LinkMatrix{G},
     matchcounts = zeros(Int64, length(compsum.counts))
     matchobs = zeros(Int64, compsum.ncomp)
 
-    for (jj, ct) in enumerate(IndexLinear(), matchvecct)
+    for (jj, ct) in pairs(IndexLinear(), matchvecct)
         if ct > 0
             for ii in 1:compsum.ncomp
                 if compsum.obsvecs[ii, jj] != 0
@@ -76,6 +76,23 @@ function counts_matches(C::LinkMatrix{G},
     return matchcounts, matchobs
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function weights_vector(pM::Array{T, 1},
                         pU::Array{T, 1},
                         compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -92,6 +109,23 @@ function weights_vector(pM::Array{T, 1},
     return weightvec
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function shrink_weights(x::G, threshold::G) where G <: Real
     return x > threshold ? x - threshold : zero(G)
 end
@@ -103,6 +137,23 @@ function shrink_weights!(x::Array{G, 1}, threshold::G) where G <: Real
     return x
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function penalized_weights_vector(pM::Array{T, 1},
                                   pU::Array{T, 1},
                                   compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -111,6 +162,23 @@ function penalized_weights_vector(pM::Array{T, 1},
     return shrink_weights!(weights_vector(pM, pU, compsum, comps), penalty)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function weights_vector_integer(pM::Array{T, 1},
                                 pU::Array{T, 1},
                                 compsum::ComparisonSummary,
@@ -119,6 +187,23 @@ function weights_vector_integer(pM::Array{T, 1},
     return Int64.(round.(scale .*  weights_vector(pM, pU, compsum, comps)))
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function penalized_weights_vector_integer(pM::Array{T, 1},
                                           pU::Array{T, 1},
                                           compsum::ComparisonSummary,
@@ -189,6 +274,23 @@ function maximum_weights_vector(pM::Array{T, 2},
     return weightvec
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function maximum_weights_matrix(pM::Array{T, 2},
                                 pU::Array{T, 2},
                                 compsum::ComparisonSummary,
@@ -365,7 +467,23 @@ end
 
 
 #SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, pweightvec[compsum.obsidx.nzval])
+"""
+    f(x::Type)
 
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function compute_costs_shrunk(pM::Array{T, 1},
                               pU::Array{T, 1},
                               compsum::ComparisonSummary,
@@ -375,6 +493,23 @@ function compute_costs_shrunk(pM::Array{T, 1},
     return costmatrix .- minimum(costmatrix, 2), maxcost
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function compute_costs_integer(pM::Array{T, 1},
                                pU::Array{T, 1},
                                compsum::ComparisonSummary,
@@ -390,10 +525,44 @@ function compute_costs_integer(pM::Array{T, 1},
     return costvec[compsum.obsidx], maxcost
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function bayesrule_posterior(w::Array{T, 1}, p::T) where T <: AbstractFloat
     return logistic.(logit(p) .+ w)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function threshold_sensitivity(pM::Array{T, 2},
                                pU::Array{T, 2},
                                compsum::Union{ComparisonSummary, SparseComparisonSummary},

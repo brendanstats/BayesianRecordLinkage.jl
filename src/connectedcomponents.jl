@@ -1,3 +1,25 @@
+
+"""
+This type does...
+
+### Constructors
+
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 struct ConnectedComponents{G <: Integer}
     rowLabels::Array{G, 1}
     colLabels::Array{G, 1}
@@ -28,6 +50,23 @@ function ConnectedComponents(rowLabels::Array{G, 1}, colLabels::Array{G, 1}, nco
     return ConnectedComponents(rowLabels, colLabels, rowperm, colperm, rowcounts, colcounts, cumrows, cumcols, nrow, ncol, ncomponents)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function get_component(ii::Integer, cc::ConnectedComponents)
     if ii < zero(ii)
         warn("all labels are positive")
@@ -47,6 +86,23 @@ function get_component(ii::Integer, cc::ConnectedComponents)
     return rows, cols
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function get_ranges(cc::ConnectedComponents)
     if issorted(cc.rowLabels) && issorted(cc.colLabels)
         out = Array{CartesianIndices{2}, 1}(undef, cc.ncomponents)
@@ -62,19 +118,87 @@ function get_ranges(cc::ConnectedComponents)
 end
 
 #off by one because first component is labeled zero
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function get_dimensions(ii::Integer, cc::ConnectedComponents)
     return cc.rowcounts[ii + 1], cc.colcounts[ii + 1]
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function get_mids(x::Array{<:Real, 1})
     sx = sort(x)
     return 0.5 .* (sx[1:end-1] + sx[2:end])
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function count_pairs(cc::ConnectedComponents)
     return dot(cc.rowcounts[2:end], cc.colcounts[2:end])
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function maxcomponent_pairs(cc::ConnectedComponents)
     #if cc.ncomponents == 0
     #    return 0
@@ -88,6 +212,23 @@ function maxcomponent_pairs(cc::ConnectedComponents)
     return maxpairs
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function maxdimension(cc::ConnectedComponents)
     if cc.ncomponents == 0
         return 0
@@ -96,6 +237,23 @@ function maxdimension(cc::ConnectedComponents)
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function count_singleton(cc::ConnectedComponents)
     nsingleton = 0
     for ii in 1:cc.ncomponents
@@ -106,6 +264,23 @@ function count_singleton(cc::ConnectedComponents)
     return nsingleton
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function summarize_components(cc::ConnectedComponents)
     return [count_pairs(cc), maxcomponent_pairs(cc), maxdimension(cc), cc.ncomponents, count_singleton(cc)]
 end

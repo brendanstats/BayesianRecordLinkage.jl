@@ -73,6 +73,23 @@ function map_solver_initialize(pM0::Array{G, 1},
     return currmrows, currmcols, pM, pU, iter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_cluster(pM0::Array{G, 1},
                             pU0::Array{G, 1},
                             compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -111,6 +128,23 @@ function map_solver_cluster(pM0::Array{G, 1},
     return currmrows, currmcols, pM, pU, iter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_auction(pM0::Array{G, 1},
                             pU0::Array{G, 1},
                             compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -159,6 +193,23 @@ function map_solver_auction(pM0::Array{G, 1},
     return mrows, mcols, pM, pU, iter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_auction_cluster(pM0::Array{G, 1},
                                     pU0::Array{G, 1},
                                     compsum::Union{ComparisonSummary, SparseComparisonSummary},

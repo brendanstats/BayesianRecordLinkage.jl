@@ -280,6 +280,23 @@ function bipartite_cluster(linkArray::SparseMatrixCSC{T}, threshold::T) where T 
     return rowLabels, colLabels, maxLabel
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function sparseblock_idxlims(linkArray::A) where A <: SparseMatrixCSC
     n, m = size(linkArray)
     col2rowstart = fill(n + 1, m)
@@ -307,6 +324,23 @@ function sparseblock_idxlims(linkArray::A) where A <: SparseMatrixCSC
     return row2colstart, row2colend, col2rowstart, col2rowend
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function bipartite_cluster_sparseblock(linkArray::A, row2colstart::Array{G, 1}, row2colend::Array{G, 1}, col2rowstart::Array{G, 1}, col2rowend::Array{G, 1}) where {G <: Integer, A <: SparseMatrixCSC{Bool}}
     n, m = size(linkArray)
     rowLabels = zeros(Int64, n)
@@ -445,6 +479,24 @@ end
 
 #iterative_bipartite_cluster(sparse([4.0 3. 3. 2. 2.; 3. 4. 3. 2. 2.; 3. 3. 4. 2. 2.; 2. 2. 2. 3. 1.; 2. 2. 2. 1. 3.]), 4, 1.1, 0.5)
 #iterative_bipartite_cluster(sparse([4.0 3. 3. 1. 1.; 3. 4. 3. 1. 1.; 3. 3. 4. 1. 1.; 1. 1. 1. 3. 2.; 1. 1. 1. 2. 3.]), 4, 1.1, 0.5)
+
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Integer, threshold0::T, incr::T, rows::Array{Int64, 1} = collect(1:size(linkArray, 1)), cols::Array{Int64, 1} = collect(1:size(linkArray, 2))) where T <: AbstractFloat
 
     #run with initial clustering
@@ -524,6 +576,24 @@ end
 #iterative_bipartite_cluster2(sparse([4. 3. 3. 2. 2.; 3. 4. 3. 2. 2.; 3. 3. 4. 2. 2.; 2. 2. 2. 3. 1.; 2. 2. 2. 1. 3.]), 4, 1.1, 0.5)
 #iterative_bipartite_cluster2(sparse([4. 3. 3. 1. 1.; 3. 4. 3. 1. 1.; 3. 3. 4. 1. 1.; 1. 1. 1. 3. 2.; 1. 1. 1. 2. 3.]), 4, 1.1, 0.5)
 #iterative_bipartite_cluster2(sparse([4. 4. 4. 1. ; 4. 4. 4. 1. ; 4. 4. 4. 1.; 1. 1. 1. 2.]), 4, 1.1, 0.5)
+
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::Integer, threshold0::T, incr::T) where T <: AbstractFloat
 
     #run with initial clustering

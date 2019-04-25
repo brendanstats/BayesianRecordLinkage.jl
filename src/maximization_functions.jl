@@ -132,6 +132,23 @@ function max_C_offsets(pM::Array{T, 1},
     return mrows, mcols, rows2cols, rowOffsets, colOffsets, maxcost
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function max_C_initialized!(pM::Array{T, 1},
                             pU::Array{T, 1},
                             compsum::ComparisonSummary,
@@ -177,7 +194,21 @@ function max_C_initialized!(pM::Array{T, 1},
 end
 
 """
-    maximizes by first 
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
 """
 function max_C_cluster(pM::Array{T, 1},
                        pU::Array{T, 1},
@@ -237,6 +268,23 @@ function max_C_cluster(pM::Array{T, 1},
     return mrows, mcols
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function max_C_cluster2(pM::Array{T, 1},
                         pU::Array{T, 1},
                         compsum::ComparisonSummary,
@@ -350,6 +398,23 @@ function max_C_cluster(pM::Array{T, 1},
     return mrows, mcols
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function max_C_auction(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::ComparisonSummary,
@@ -430,6 +495,23 @@ function max_C_auction(pM::Array{T, 1},
     return mrows, mcols, rowCosts, colCosts, w, εfinal, λ
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function max_C_auction_cluster(pM::Array{T, 1},
                                pU::Array{T, 1},
                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -644,6 +726,23 @@ function max_C_auction_cluster(pM::Array{T, 1},
     return mrows, mcols, r2c, c2r, rowCosts, colCosts, w, margin
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function max_C_sparseauction_cluster(pM::Array{T, 1},
                                      pU::Array{T, 1},
                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},

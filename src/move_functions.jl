@@ -1,3 +1,20 @@
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 get_loglik(row::G, col::G, compsum::ComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf) where {G <: Integer, T <: AbstractFloat} = loglikMargin[compsum.obsidx[row, col]]
 
 function get_loglik(row::G, col::G, compsum::SparseComparisonSummary, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf)  where {G <: Integer, T <: AbstractFloat}
@@ -8,6 +25,23 @@ function get_loglik(row::G, col::G, compsum::SparseComparisonSummary, loglikMarg
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 get_counts(row::G, col::G, compsum::ComparisonSummary, countDeltas::Array{T, 2}) where {G <: Integer, T <: Integer} = countDeltas[:, compsum.obsidx[row, col]]
 
 
@@ -22,10 +56,10 @@ end
 
 
 """
-        locbal_kernel_move!(row, column, LinkMatrix) -> MovedLinkMatrix
+    locbal_kernel_move!(row, column, LinkMatrix) -> MovedLinkMatrix
 
-    Performes a move as described in Zanella (2017) appendix C
-    """
+Performes a move as described in Zanella (2017) appendix C
+"""
 function randomwalk1_move!(row::T, col::T, C::LinkMatrix{T}) where T <: Integer
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
@@ -66,6 +100,23 @@ randomwalk1_move!(idx::CartesianIndex{2}, C::LinkMatrix{T}) where {T <: Integer}
 randomwalk1_move(row::T, col::T, C::LinkMatrix{T}) where {T <: Integer} = randomwalk1_move!(row, col, deepcopy(C))
 randomwalk1_move(idx::CartesianIndex{2}, C::LinkMatrix{T}) where {T <: Integer} = randomwalk1_move!(idx.I[1], idx.I[2], deepcopy(C))
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_movetype(row::T, col::T, C::LinkMatrix) where {T <: Integer}
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
@@ -85,10 +136,10 @@ function randomwalk1_movetype(row::T, col::T, C::LinkMatrix) where {T <: Integer
 end
 
 """
-        locbal_kernel_move!(row, column, LinkMatrix) -> MovedLinkMatrix
+    locbal_kernel_move!(row, column, LinkMatrix) -> MovedLinkMatrix
 
-    Performes a move as described in Zanella (2017) appendix C
-    """
+Performes a move as described in Zanella (2017) appendix C
+"""
 function randomwalk1_countdelta(row::T, col::T,
                                 C::LinkMatrix{T},
                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -123,6 +174,23 @@ end
 randomwalk1_countdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countDeltas::Array{<:Integer, 2}) where T <: Integer =
     randomwalk1_countdelta(idx.I[1], idx.I[2], C, compsum, countDeltas)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_loglikdelta(row::T, col::T,
                                  C::LinkMatrix{T},
                                  compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -157,6 +225,23 @@ end
 randomwalk1_loglikdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{<:AbstractFloat, 1}) where T <: Integer =
     randomwalk1_loglikdelta(idx.I[1], idx.I[2], C, compsum, loglikMargin)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_countobsdelta(row::T, col::T,
                                    C::LinkMatrix{T},
                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -203,6 +288,23 @@ end
 randomwalk1_countobsdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countDeltas::Array{<:Integer, 2}, obsDeltas::Array{<:Integer, 2}) where T <: Integer =
     randomwalk1_countobsdelta(idx.I[1], idx.I[2], C, compsum, countDeltas, obsDeltas)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_loglikcountdelta(row::T, col::T,
                                       C::LinkMatrix{T},
                                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -249,6 +351,23 @@ end
 randomwalk1_loglikcountdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2}) where T <: Integer =
     randomwalk1_loglikcountdelta(idx.I[1], idx.I[2], C, compsum, loglikMargin, countDeltas)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_loglikcountobsdelta(row::T, col::T,
                                          C::LinkMatrix{T},
                                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -305,12 +424,46 @@ end
 randomwalk1_loglikcountobsdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2}, obsDeltas::Array{<:Integer, 2}) where T <: Integer =
     randomwalk1_loglikcountobsdelta(idx.I[1], idx.I[2], C, compsum, loglikMargin, countDeltas, obsDeltas)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_movecount(nrow::Integer, ncol::Integer, nlink::Integer)
     return nrow * ncol - div(nlink * (nlink - 1), 2)
 end
 
 randomwalk1_movecount(crng::CartesianIndices{2}, nlink::Integer) = randomwalk1_movecount(size(crng)[1], size(crng)[2], nlink)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_reversemove(moverow::Integer, movecol::Integer, movetype::Integer, C::LinkMatrix)
     #movetype = 1 => add
     #movetype = 2 => switch link row
@@ -331,6 +484,23 @@ function randomwalk1_reversemove(moverow::Integer, movecol::Integer, movetype::I
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_movetype2ratio(movetype::Integer, C::LinkMatrix)
     #ratio = P(move back) / P(move) = #moves / #moves back
     if movetype == 1 #check ratio P(new -> old) / P(old -> new)
@@ -344,6 +514,23 @@ function randomwalk1_movetype2ratio(movetype::Integer, C::LinkMatrix)
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk1_draw(C::LinkMatrix,
                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
                           countDeltas::Array{<:Integer, 2})
@@ -382,6 +569,23 @@ function randomwalk1_draw(rng::CartesianIndices{2},
 end
 
 #efficent compute ratio of likelihoods
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
                       countDeltas::Array{<:Integer, 2}, logDiff::Array{<:AbstractFloat, 1},
                       balance_function::Function = identity_balance)
@@ -442,6 +646,23 @@ function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseCom
     return moveweights
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function log_move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
                           loglikMargin::Array{<:AbstractFloat, 1},
                           logpdfC::Function, log_balance_function::Function = lidentity_balance)
@@ -564,6 +785,23 @@ function log_move_weights(rng::CartesianIndices{2},
     return lmoveweights
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function locally_balanced_draw(C::LinkMatrix,
                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                countDeltas::Array{<:Integer, 2},
@@ -644,6 +882,23 @@ function locally_balanced_draw(C::LinkMatrix,
     return propC, loglikdelta, countdelta,  moveratio
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function locally_balanced_draw!(C::LinkMatrix,
                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                 loglikMargin::Array{<:AbstractFloat, 1},
@@ -837,6 +1092,23 @@ function locally_balanced_draw!(rng::CartesianIndices{2},
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function globally_balanced_draw(C::LinkMatrix,
                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                 countDeltas::Array{<:Integer, 2},
@@ -852,6 +1124,23 @@ function globally_balanced_draw(C::LinkMatrix,
     return locally_balanced_draw(C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, identity_balance)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function globally_balanced_draw!(C::LinkMatrix,
                                  compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                  loglikMargin::Array{<:AbstractFloat, 1},
@@ -886,6 +1175,23 @@ function globally_balanced_draw!(rng::CartesianIndices{2},
     return locally_balanced_draw!(rng, C, compsum, loglikMargin, countDeltas, logpdfC, lidentity_balance)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function locally_balanced_sqrt_draw(C::LinkMatrix,
                                     compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                     countDeltas::Array{<:Integer, 2},
@@ -901,6 +1207,23 @@ function locally_balanced_sqrt_draw(C::LinkMatrix,
     return locally_balanced_draw(C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, sqrt_balance)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function locally_balanced_sqrt_draw!(C::LinkMatrix,
                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                      loglikMargin::Array{<:AbstractFloat, 1},
@@ -935,6 +1258,23 @@ function locally_balanced_sqrt_draw!(rng::CartesianIndices{2},
     return locally_balanced_draw!(rng, C, compsum, loglikMargin, countDeltas, logpdfC, lsqrt_balance)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function locally_balanced_barker_draw(C::LinkMatrix,
                                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                       countDeltas::Array{<:Integer, 2},
@@ -984,6 +1324,23 @@ function locally_balanced_barker_draw!(rng::CartesianIndices{2},
     return locally_balanced_draw!(rng, C, compsum, loglikMargin, countDeltas, logpdfC, lbarker_balance)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk2_move!(row::T, col::T, C::LinkMatrix{T}) where T <: Integer
     
     if iszero(C.row2col[row])
@@ -1014,8 +1371,42 @@ function randomwalk2_move!(row::T, col::T, C::LinkMatrix{T}) where T <: Integer
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 randomwalk2_move(row::T, col::T, C::LinkMatrix{T}) where T <: Integer = randomwalk2_move!(row, col, deepcopy(C))
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function randomwalk2_countdelta(row::T, col::T,
                                 C::LinkMatrix{T},
                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -1075,7 +1466,23 @@ function randomwalk2_draw(C::LinkMatrix,
     return randomwalk1_move(ii, jj, C), countdelta, ratio
 end
 
+"""
+    f(x::Type)
 
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function singleton_gibbs(rng::CartesianIndices{2}, C::LinkMatrix,
                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
                          loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},
@@ -1102,6 +1509,23 @@ function singleton_gibbs(rng::CartesianIndices{2}, C::LinkMatrix,
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function singleton_gibbs!(rng::CartesianIndices{2}, C::LinkMatrix,
                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
                           loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},
@@ -1129,6 +1553,23 @@ function singleton_gibbs!(rng::CartesianIndices{2}, C::LinkMatrix,
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function singlerow_gibbs(row::Integer, cols::Array{<:Integer}, C::LinkMatrix,
                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
                          loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},

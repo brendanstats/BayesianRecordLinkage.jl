@@ -3,10 +3,44 @@
 #softmax(exppenalty_logprior.(0:min(nrow, ncol)))
 ####################
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 exppenalty_prior(nlink::Integer, θ::Real) = exp(-θ * nlink)
 exppenalty_prior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = exp(-θ * nlink)
 exppenalty_prior(C::LinkMatrix, θ::Real) = exppenalty_prior(C.nlink, θ)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 exppenalty_logprior(nlink::Integer, θ::Real) = -θ * nlink
 exppenalty_logprior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = -θ * nlink
 exppenalty_logprior(C::LinkMatrix, θ::Real) = exppenalty_logprior(C.nlink, θ)
@@ -68,18 +102,69 @@ exppenalty_logratiopn(nadd::Integer, C::LinkMatrix, θ::Real) = -θ * nadd
 #Sadinle 2017
 ####################
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function betabipartite_prior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     return nrow >= ncol ? prod(nlink + 1:nrow) * beta(nlink + α, ncol - nlink + β) / beta(α, β) : prod(nlink + 1:ncol) * beta(nlink + α, nrow - nlink + β) / beta(α, β)
 end
 
 betabipartite_prior(C::LinkMatrix, α::Real, β::Real) = betabipartite_prior(nlink, nrow, ncol, α, β)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function betabipartite_logprior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
-    nrow >= ncol ? lfact(nrow - nlink) - lfact(nrow) +  lbeta(nlink + α, ncol - nlink + β) - lbeta(α, β) : lfact(ncol - nlink) - lfact(ncol) + lbeta(nlink + α, nrow - nlink + β) - lbeta(α, β)
+    nrow >= ncol ? lfactorial(nrow - nlink) - lfactorial(nrow) +  lbeta(nlink + α, ncol - nlink + β) - lbeta(α, β) : lfactorial(ncol - nlink) - lfactorial(ncol) + lbeta(nlink + α, nrow - nlink + β) - lbeta(α, β)
 end
 
 betabipartite_logprior(C::LinkMatrix, α::Real, β::Real) = betabipartite_logprior(C.nlink, C.nrow, C.ncol, α, β)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function betabipartite_ratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nlink1 == nlink2
         return 1.0
@@ -113,14 +198,48 @@ end
 #    end
 #end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 betabipartite_ratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real) = exp(betabipartite_logratiopn(nadd, nlink, nrow, ncol, α, β))
 betabipartite_ratiopn(nadd::Integer, C::LinkMatrix, nrow::Integer, ncol::Integer, α::Real, β::Real) = exp(betabipartite_logratiopn(nadd, C.nlink, nrow, ncol, α, β))
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function betabipartite_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nlink1 == nlink2
         return 0.0
     else
-        nrow >= ncol ? lfact(nrow - nlink1) - lfact(nrow - nlink2) + lbeta(nlink1 + α, ncol - nlink1 + β) - lbeta(nlink2 + α, ncol - nlink2 + β) : lfact(ncol - nlink1) - lfact(ncol - nlink2) + lbeta(nlink1 + α, nrow - nlink1 + β) - lbeta(nlink2 + α, nrow - nlink2 + β)
+        nrow >= ncol ? lfactorial(nrow - nlink1) - lfactorial(nrow - nlink2) + lbeta(nlink1 + α, ncol - nlink1 + β) - lbeta(nlink2 + α, ncol - nlink2 + β) : lfactorial(ncol - nlink1) - lfactorial(ncol - nlink2) + lbeta(nlink1 + α, nrow - nlink1 + β) - lbeta(nlink2 + α, nrow - nlink2 + β)
     end
 end
 
@@ -134,13 +253,30 @@ end
 #        return 0.0
 #    else
 #        if  C1.nrow >= C1.ncol
-#            return lfact(C1.nrow - C1.nlink) - lfact(C2.nrow - C2.nlink) + lbeta(C1.nlink + α, C1.ncol - C1.nlink + β) - lbeta(C2.nlink + α, C2.ncol - C2.nlink + β)
+#            return lfactorial(C1.nrow - C1.nlink) - lfactorial(C2.nrow - C2.nlink) + lbeta(C1.nlink + α, C1.ncol - C1.nlink + β) - lbeta(C2.nlink + α, C2.ncol - C2.nlink + β)
 #        else
-#            return lfact(C1.ncol - C1.nlink) - lfact(C2.ncol - C2.nlink) + lbeta(C1.nlink + α, C1.nrow - C1.nlink + β) - lbeta(C2.nlink + α, C2.nrow - C2.nlink + β)
+#            return lfactorial(C1.ncol - C1.nlink) - lfactorial(C2.ncol - C2.nlink) + lbeta(C1.nlink + α, C1.nrow - C1.nlink + β) - lbeta(C2.nlink + α, C2.nrow - C2.nlink + β)
 #        end
 #    end
 #end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function betabipartite_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nadd == 0
         return 0.0
@@ -149,7 +285,7 @@ function betabipartite_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, 
         return betabipartite_logratiopn(nadd, nlink, ncol, nrow, α, β)
     end
     nnew = nlink + nadd
-    coeff1 = lfact(nrow - nnew) - lfact(nrow - nlink)
+    coeff1 = lfactorial(nrow - nnew) - lfactorial(nrow - nlink)
     coeff2 = lbeta(nnew + α, ncol - nnew + β) - lbeta(nlink + α, ncol - nlink + β)
     return coeff1 + coeff2
 end

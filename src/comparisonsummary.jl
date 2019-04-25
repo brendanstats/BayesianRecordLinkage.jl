@@ -45,6 +45,23 @@ struct ComparisonSummary{G <: Integer, T <: Integer}
 end
 
 ##Construct mapping variables
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function mapping_variables(nlevels::Array{Int64, 1})
     cmap = mapreduce(x -> fill(x[1], x[2]), vcat, enumerate(nlevels))
     levelmap = mapreduce(x -> 1:x, vcat, nlevels)
@@ -52,7 +69,24 @@ function mapping_variables(nlevels::Array{Int64, 1})
     return cmap, levelmap, cadj
 end
 
-##Construct 
+##Construct
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function comparison_variables(comparisons::BitArray{3}, nrow::Int64, ncol::Int64, ncomp::Int64)
     obsidx = Array{Int64}(undef, nrow, ncol)
     obsvecct = Array{Int64}(undef, 0) 
@@ -366,6 +400,23 @@ function comparison_variables(namelist::Array{Array{String, 1}, 1}, nrow::Int64,
 end
 
 ##Count numbers of observations
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function count_variables(obsidx::Array{G, 2}, obsvecs::Array{T, 2}, obsvecct::Array{Int64, 1}, cmap::Array{Int64, 1}, cadj::Array{Int64, 1}) where {G <: Integer, T <: Integer}
     ncomp = size(obsvecs, 1)
     npairs = size(obsidx, 1) * size(obsidx, 2)
@@ -444,6 +495,27 @@ ComparisonSummary(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::Compariso
                       compsum.obsct, compsum.misct, compsum.nlevels, compsum.cmap, compsum.levelmap, compsum.cadj,
                       compsum.nrow, compsum.ncol, compsum.npairs, compsum.ncomp)
 
+"""
+This type does...
+
+### Constructors
+
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 struct SparseComparisonSummary{G <: Integer, Tv <: Integer, Ti <: Integer}
     obsidx::SparseMatrixCSC{Tv, Ti} #assume indexed by Int64s...
     obsvecs::Array{G, 2}
@@ -552,6 +624,23 @@ function SparseComparisonSummary(filenames::Array{Array{String, 1}, 1}, nrow::In
     return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function extract_integers(s::String, nobs::Integer, idxType::DataType, obsType::DataType, sep::Char)
     obs = Array{obsType}(undef, nobs)
     idx1 = start(s)
@@ -579,6 +668,23 @@ function extract_integers(s::String, nobs::Integer, idxType::DataType, obsType::
     return row, col, obs
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function extract_integers!(row::G, col::G, obs::Array{T, 1}, s::String, nobs::Integer, sep::Char) where {G <: Integer, T <: Integer}
     idx1 = start(s)
     n = endof(s)
@@ -605,6 +711,23 @@ function extract_integers!(row::G, col::G, obs::Array{T, 1}, s::String, nobs::In
     return row, col, obs
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function stream_comparisonsummary(filename::String, nrow::Int64, ncol::Int64, nlevels::Array{Int64, 1}; idxType::DataType = Int64, obsType::DataType = Int8, header::Bool = true, sep::Char = '\t')
 
     ##Mapping variables
@@ -658,6 +781,23 @@ end
 #sparse(I,J,V)
 #obsvecs
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function merge_comparisonsummary(CS1::SparseComparisonSummary, CS2::SparseComparisonSummary)
     
     if CS1.ncomp != CS2.ncomp
@@ -731,6 +871,23 @@ SparseComparisonSummary(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::Spa
                       compsum.obsct, compsum.misct, compsum.nlevels, compsum.cmap, compsum.levelmap, compsum.cadj,
                       compsum.nrow, compsum.ncol, compsum.npairs, compsum.ncomp)
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function counts_delta(compsum::Union{ComparisonSummary, SparseComparisonSummary})
     deltas = zeros(Int8, length(compsum.counts), size(compsum.obsvecs, 2))
     for jj in 1:size(compsum.obsvecs, 2), ii in 1:size(compsum.obsvecs, 1)
@@ -741,6 +898,23 @@ function counts_delta(compsum::Union{ComparisonSummary, SparseComparisonSummary}
     return deltas
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function obs_delta(compsum::Union{ComparisonSummary, SparseComparisonSummary})
     deltas = zeros(Int8, size(compsum.obsvecs))
     for jj in 1:size(compsum.obsvecs, 2), ii in 1:size(compsum.obsvecs, 1)

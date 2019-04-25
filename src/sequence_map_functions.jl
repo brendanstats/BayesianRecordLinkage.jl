@@ -1,3 +1,20 @@
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function next_penalty(pM::Array{T, 1},
                       pU::Array{T, 1},
                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -118,6 +135,23 @@ function map_solver_iter(pM0::Array{G, 1},
     return outMatches, outM, outU, outIter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_iter_cluster(pM0::Array{G, 1},
                                  pU0::Array{G, 1},
                                  compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -166,7 +200,23 @@ function map_solver_iter_cluster(pM0::Array{G, 1},
     return outMatches, outM, outU, outIter
 end
 
+"""
+    f(x::Type)
 
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_iter_initialize(pM0::Array{G, 1},
                                     pU0::Array{G, 1},
                                     compsum::ComparisonSummary{<:Integer, <:Integer},
@@ -241,6 +291,23 @@ function map_solver_iter_initialize(pM0::Array{G, 1},
     return outMatches, outM, outU, outIter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_search(pM0::Array{G, 1},
                            pU0::Array{G, 1},
                            compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -294,6 +361,23 @@ function map_solver_search(pM0::Array{G, 1},
     return outMatches, outM', outU', penalties, outIter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_search_cluster(pM0::Array{G, 1},
                                    pU0::Array{G, 1},
                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
@@ -348,6 +432,23 @@ function map_solver_search_cluster(pM0::Array{G, 1},
     return outMatches, outM', outU', penalties, outIter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_search_auction(pM0::Array{G, 1},
                                    pU0::Array{G, 1},
                                    compsum::ComparisonSummary{<:Integer, <:Integer},
@@ -434,6 +535,23 @@ function map_solver_search_auction(pM0::Array{G, 1},
     return outMatches, outM', outU', penalties, outIter
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function map_solver_search_auction_cluster(pM0::Array{G, 1},
                                            pU0::Array{G, 1},
                                            compsum::Union{ComparisonSummary, SparseComparisonSummary},

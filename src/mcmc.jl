@@ -14,7 +14,7 @@ function dirichlet_draw(matchcounts::Array{<:Integer, 1},
     
     startidx = 1
     for ii in 1:length(compsum.nlevels)
-        rng = range(startidx, compsum.nlevels[ii])
+        rng = range(startidx, length = compsum.nlevels[ii])
         startidx += compsum.nlevels[ii]
         pM[rng] = rand(Dirichlet(paramM[rng]))
         pU[rng] = rand(Dirichlet(paramU[rng]))

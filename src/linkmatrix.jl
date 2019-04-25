@@ -1,3 +1,24 @@
+"""
+This types does...
+
+### Constructors
+
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 mutable struct LinkMatrix{G <: Integer}
     #row2col::Array{G, 1}
     #col2row::Array{G, 1}
@@ -51,6 +72,23 @@ function LinkMatrix(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1}) wh
     return LinkMatrix(row2col, col2row, length(mrows), nrow, ncol)
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function ==(C1::LinkMatrix, C2::LinkMatrix)
     if C1.nrow != C2.nrow
         return false
@@ -78,6 +116,23 @@ function ==(C1::LinkMatrix, C2::LinkMatrix)
     return true
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function has_link(row::G, col::G, C::LinkMatrix) where G <: Integer
     if (C.row2col[row] == col) && (C.col2row[col] == row)
         return true
@@ -86,6 +141,23 @@ function has_link(row::G, col::G, C::LinkMatrix) where G <: Integer
     end
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function add_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
     if (!iszero(C.row2col[row])) || (!iszero(C.col2row[col]))
         r2c = C.row2col[row]
@@ -99,8 +171,42 @@ function add_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
     return C
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 add_link(row::G, col::G, C::LinkMatrix) where G <: Integer = add_link!(row, col, deepcopy(C))
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function remove_link!(row::G, col::G, C::LinkMatrix) where G <: Integer
     if iszero(C.row2col[row]) || iszero(C.col2row[col])
         warn("row column pair not linked, no removal")
@@ -114,8 +220,42 @@ function remove_link!(row::G, col::G, C::LinkMatrix) where G <: Integer
     return C
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 remove_link(row::G, col::G, C::LinkMatrix) where G <: Integer = remove_link!(row, col, deepcopy(C))
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 function switch_link!(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer
     if (C.row2col[row1] != col1) || (C.row2col[row2] != col2)
         warn("provided pairs not current links, no switch")
@@ -127,4 +267,21 @@ function switch_link!(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G
     return C
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
 switch_link(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer = switch_link!(row1, col1, row2, col2, deepcopy(C))

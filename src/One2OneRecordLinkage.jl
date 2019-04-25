@@ -9,6 +9,7 @@ using DataStructures: Queue, enqueue!, dequeue!
 using StatsBase
 using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp
 using SparseArrays
+using SpecialFunctions: lfactorial
 import Base: ==
 
 export ComparisonSummary,
