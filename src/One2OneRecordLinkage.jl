@@ -1,15 +1,15 @@
 module One2OneRecordLinkage
-using Munkres, AssignmentSolver
+using Munkres, AssignmentSolver, HDF5
 #using RCall
 #clue = rimport("clue")
 
 using Distributions: Dirichlet
-using Levenshtein: levenshtein
+#using Levenshtein: levenshtein
 using DataStructures: Queue, enqueue!, dequeue!
 using StatsBase
 using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp
 using SparseArrays
-using SpecialFunctions: lfactorial
+using SpecialFunctions: lfactorial, lbeta
 import Base: ==
 
 export ComparisonSummary,
@@ -72,6 +72,14 @@ export randomwalk1_draw,
     locally_balanced_barker_draw, locally_balanced_barker_draw!,
     randomwalk2_draw
 export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count, mh_gibbs_chain_inplace, mh_gibbs_count_inplace
+export h5write_ComparisonSummary,
+    h5read_ComparisonSummary,
+    h5write_SparseComparisonSummary,
+    h5read_SparseComparisonSummary,
+    h5write_ConnectedComponents,
+    h5read_ConnectedComponents,
+    h5write_penalized_likelihood_estimate,
+    h5write_posthoc_blocking
 
 include("comparisonsummary.jl")
 include("linkmatrix.jl")
@@ -86,4 +94,5 @@ include("prior_functions.jl")
 include("balancing_functions.jl")
 include("move_functions.jl")
 include("mcmc.jl")
+include("read_write_h5.jl")
 end
