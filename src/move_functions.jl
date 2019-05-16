@@ -591,7 +591,8 @@ function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseCom
                       balance_function::Function = identity_balance)
     moveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
-        idx = sub2ind((C.nrow, C.ncol), ii, jj)
+        #idx = sub2ind((C.nrow, C.ncol), ii, jj)
+        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
         countdelta, movetype = randomwalk1_countdelta(ii, jj, C, compsum, countDeltas)
         
         ##down weight double switches since two of them arrive at the same result
@@ -610,7 +611,7 @@ function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseCom
                       balance_function::Function = identity_balance)
     moveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
-        idx = sub2ind((C.nrow, C.ncol), ii, jj)
+        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
         propC = randomwalk1_move(ii, jj, C)
         countdelta, movetype = randomwalk1_countdelta(ii, jj, C, compsum, countDeltas)
         
@@ -629,7 +630,7 @@ function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseCom
                       logpdfC::Function, balance_function::Function = identity_balance)
     moveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
-        idx = sub2ind((C.nrow, C.ncol), ii, jj)
+        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
         loglikdelta, movetype = randomwalk1_loglikdelta(ii, jj, C, compsum, loglikMargin)
         
         ##down weight double switches since two of them arrive at the same result
@@ -668,7 +669,7 @@ function log_move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, Spars
                           logpdfC::Function, log_balance_function::Function = lidentity_balance)
     lmoveweights = Array{Float64}(undef, C.nrow * C.ncol)
     for jj in 1:C.ncol, ii in 1:C.nrow
-        idx = sub2ind((C.nrow, C.ncol), ii, jj)
+        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
         loglikdelta, movetype = randomwalk1_loglikdelta(ii, jj, C, compsum, loglikMargin)
         
         ##down weight double switches since two of them arrive at the same result
@@ -693,7 +694,8 @@ function move_weights(rng::CartesianIndices{2},
     startcol = first(rng).I[2] - 1
     moveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        idx = sub2ind(size(rng), ii, jj)
+        #idx = sub2ind(size(rng), ii, jj)
+        idx = LinearIndices(size(rng))[ii, jj]
         countdelta, movetype = randomwalk1_countdelta(startrow + ii,
                                                       startcol + jj,
                                                       C, compsum, countDeltas)
@@ -717,7 +719,7 @@ function move_weights(rng::CartesianIndices{2},
     startcol = first(rng).I[2] - 1
     moveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        idx = sub2ind(size(rng), ii, jj)
+        idx = LinearIndices(size(rng))[ii, jj]
         propC = randomwalk1_move(ii, jj, C)
         countdelta, movetype = randomwalk1_countdelta(startrow + ii,
                                                       startcol + jj,
@@ -742,7 +744,7 @@ function move_weights(rng::CartesianIndices{2},
     startcol = first(rng).I[2] - 1
     moveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        idx = sub2ind(size(rng), ii, jj)
+        idx = LinearIndices(size(rng))[ii, jj]
         loglikdelta, movetype = randomwalk1_loglikdelta(startrow + ii, startcol + jj, C, compsum, loglikMargin)
         
         ##down weight double switches since two of them arrive at the same result
@@ -768,7 +770,7 @@ function log_move_weights(rng::CartesianIndices{2},
     startcol = first(rng).I[2] - 1
     lmoveweights = Array{Float64}(undef, length(rng))
     for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        idx = sub2ind(size(rng), ii, jj)
+        idx = LinearIndices(size(rng))[ii, jj]
         loglikdelta, movetype = randomwalk1_loglikdelta(startrow + ii, startcol + jj, C, compsum, loglikMargin)
         
         ##down weight double switches since two of them arrive at the same result
@@ -812,6 +814,7 @@ function locally_balanced_draw(C::LinkMatrix,
     
     ##Sample move
     idx = sample(Weights(vec(moveweights)))
+    #moverow, movecol = ind2sub((compsum.nrow, compsum.ncol), idx)
     moverow, movecol = ind2sub((compsum.nrow, compsum.ncol), idx)
     countdelta, movetype = randomwalk1_countdelta(moverow, movecol, C, compsum, countDeltas)
     propC = randomwalk1_move(moverow, movecol, C)
