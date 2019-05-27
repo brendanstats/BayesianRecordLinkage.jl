@@ -1,6 +1,24 @@
 """
-    Compute the conditional dirchlet distribution for updating M and U parameters via a gibbs step
-    """
+Drop indicies outside of connected components, removing all values from compsum.obsidx[ii, jj] where cc.rowLabels[ii] != cc.colLabels[jj]
+"""
+function dropoutside!(compsum::SparseComparisonSummary{G, Tv, Ti}, cc::ConnectedComponents) where {G <: Integer, Tv <: Integer, Ti <: Integer}
+    rows = rowvals(compsum.obsidx)
+    vals = nonzeros(compsum.obsidx)
+    for jj = 1:compsum.ncol
+        for ii in nzrange(compsum.obsidx, jj)
+            row = rows[ii]
+            if iszero(cc.rowLabels[row]) || (cc.rowLabels[row] != cc.colLabels[jj])
+                vals[ii] = zero(Ti)
+            end
+        end
+    end
+    dropzeros!(compsum.obsidx)
+    return compsum
+end
+
+"""
+Compute the conditional dirchlet distribution for updating M and U parameters via a gibbs step
+"""
 function dirichlet_draw(matchcounts::Array{<:Integer, 1},
                         compsum::Union{ComparisonSummary, SparseComparisonSummary},
                         priorM::Array{<: Real, 1} = zeros(Float64, length(matchcounts)),

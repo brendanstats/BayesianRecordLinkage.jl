@@ -24,6 +24,8 @@ export LinkMatrix,
 export E_step, M_step, estimate_EM
 export ConnectedComponents,
     get_component,
+    label2dict,
+    get_component,
     get_ranges,
     get_dimensions,
     get_mids,
@@ -79,7 +81,7 @@ export randomwalk1_draw,
     randomwalk2_draw,
     get_loglik,
     get_counts
-export dirichlet_draw, mh_gibbs_chain, mh_gibbs_count, mh_gibbs_chain_inplace, mh_gibbs_count_inplace
+export dropoutside!, dirichlet_draw, mh_gibbs_chain, mh_gibbs_count, mh_gibbs_chain_inplace, mh_gibbs_count_inplace
 export h5write_ComparisonSummary,
     h5read_ComparisonSummary,
     h5write_SparseComparisonSummary,
