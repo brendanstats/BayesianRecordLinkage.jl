@@ -1355,11 +1355,13 @@ function randomwalk2_move!(row::T, col::T, C::LinkMatrix{T}) where T <: Integer
             return C
         end
     else
-        if iszero(C.col2row[col]) ##switch move 
-            C.col2row[C.row2col[row]] = zero(T)
-            C.col2row[col] = row
-            C.row2col[row] = col
-            dropzeros!(C.col2row)
+        if iszero(C.col2row[col]) ##switch move
+            remove_link!(row, C.row2col[row], C)
+            add_link!(row, col, C)
+            #C.col2row[C.row2col[row]] = zero(T)
+            #C.col2row[col] = row
+            #C.row2col[row] = col
+            #dropzeros!(C.col2row)
             return C
         elseif C.col2row[col] == row ##delete move
             remove_link!(row, col, C)
