@@ -21,6 +21,7 @@ export LinkMatrix,
     add_link, add_link!,
     remove_link!, remove_link,
     switch!_link, switch_link
+export ParameterChain, get_linkcounts, get_linkstagecounts
 export E_step, M_step, estimate_EM
 export ConnectedComponents,
     get_component,
@@ -93,6 +94,7 @@ export h5write_ComparisonSummary,
 
 include("comparisonsummary.jl")
 include("linkmatrix.jl")
+include("parameterchain.jl")
 include("em_functions.jl")
 include("connectedcomponents.jl")
 include("clustering_functions.jl")

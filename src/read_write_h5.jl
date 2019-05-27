@@ -131,6 +131,35 @@ function h5read_ConnectedComponents(filename::String; groupname::String = "/")
     )
 end
 
+function h5write_ParameterChain(filename::String,
+                                pchain::ParameterChain;
+                                groupname::String = "/",
+                                mode::String = "w")
+    h5open(filename, mode) do writef
+        writef[groupname * "/C"] = pchain.C
+        writef[groupname * "/nlinks"] = pchain.nlinks
+        writef[groupname * "/pM"] = pchain.pM
+        writef[groupname * "/pU"] = pchain.pU
+        writef[groupname * "/nsteps"] = pchain.nsteps
+        writef[groupname * "/linktrace"] = pchain.linktrace
+    end
+    nothing
+end
+
+function h5read_ParameterChain(filename::String,
+                               groupname::String = "/",
+                               mode::String = "r")
+    return h5open(filename, mode) do readf
+        ParameterChain(readf[groupname * "/C"],
+                       readf[groupname * "/nlinks"],
+                       readf[groupname * "/pM"],
+                       readf[groupname * "/pU"],
+                       readf[groupname * "/nsteps"],
+                       readf[groupname * "/linktrace"])
+    end
+end
+
+
 function h5write_penalized_likelihood_estimate(filename::String,
                                                priorM::Array{T, 1},
                                                priorU::Array{T, 1},
