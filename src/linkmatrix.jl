@@ -20,10 +20,10 @@ This types does...
 ```
 """
 mutable struct LinkMatrix{G <: Integer}
-    #row2col::Array{G, 1}
-    #col2row::Array{G, 1}
-    row2col::SparseVector{G, G}
-    col2row::SparseVector{G, G}
+    row2col::Array{G, 1}
+    col2row::Array{G, 1}
+    #row2col::SparseVector{G, G}
+    #col2row::SparseVector{G, G}
     nlink::G
     nrow::G
     ncol::G
@@ -34,6 +34,31 @@ mutable struct LinkMatrix{G <: Integer}
     #else
     #    LinkMatrix{G}(row2col, col2row, nlink, nrow, ncol) = new(row2col, col2row, nlink, nrow, ncol)
     #end
+end
+
+LinkMatrix(nrow::G, ncol::G) where G <: Integer = LinkMatrix(zeros(G, nrow), zeros(G, ncol), zero(G), nrow, ncol)
+LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}, nlink::G) where G <: Integer = LinkMatrix(row2col, col2row, G(length(row2col)), G(length(col2row)))
+LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}) where G <: Integer = LinkMatrix(row2col, col2row, count(!iszero, x))
+function LinkMatrix(row2col::Array{G}, ncol::G) where G <: Integer
+    col2row = zeros(G, ncol)
+    nlink = zero(G)
+    for ii in one(G):G(length(row2col))
+        if !iszero(row2col[ii])
+            col2row[row2col[ii]] = ii
+            nlink += one(G)
+        end
+    end
+    LinkMatrix(row2col, col2row, nlink, G(length(row2col)), ncol)
+end
+
+function LinkMatrix(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1}) where G <: Integer
+    row2col = zeros(G, nrow)
+    col2row = zeros(G, ncol)
+    for (ii, jj) in zip(mrows, mcols)
+        row2col[ii] = jj
+        col2row[jj] = ii
+    end
+    return LinkMatrix(row2col, col2row, length(mrows), nrow, ncol)
 end
 
 LinkMatrix(row2col::SparseVector{G, G}, col2row::SparseVector{G, G}) where G <: Integer = LinkMatrix(row2col, col2row, G(countnz(row2col)), G(row2col.n), G(col2row.n))
@@ -56,20 +81,6 @@ function LinkMatrix(G::DataType, row2col::SparseVector, col2row::SparseVector)
         error("G must be an integer")
     end
     return LinkMatrix(SparseVector(row2col.n, G.(row2col.nzind), G.(row2col.nzval)), SparseVector(col2row.n, G.(col2row.nzind), G.(col2row.nzval)))
-end
-
-LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}) where G <: Integer = LinkMatrix(sparse(row2col), sparse(col2row))
-LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}, nlink::G) where G <: Integer = LinkMatrix(row2col, col2row, G(length(row2col)), G(length(col2row)))
-LinkMatrix(nrow::G, ncol::G) where G <: Integer = LinkMatrix(spzeros(G, nrow), spzeros(G, ncol), zero(G), nrow, ncol)
-
-function LinkMatrix(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1}) where G <: Integer
-    row2col = zeros(G, nrow)
-    col2row = zeros(G, ncol)
-    for (ii, jj) in zip(mrows, mcols)
-        row2col[ii] = jj
-        col2row[jj] = ii
-    end
-    return LinkMatrix(row2col, col2row, length(mrows), nrow, ncol)
 end
 
 """
@@ -134,8 +145,10 @@ end
 ```
 """
 function has_link(row::G, col::G, C::LinkMatrix) where G <: Integer
-    if (C.row2col[row] == col) && (C.col2row[col] == row)
-        return true
+    if izero(row) || iszero(col)
+        return false
+    elseif (C.row2col[row] != col) || (C.col2row[col] != row)
+        return false
     else
         return false
     end
@@ -159,10 +172,10 @@ end
 ```
 """
 function add_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
-    if (!iszero(C.row2col[row])) || (!iszero(C.col2row[col]))
-        r2c = C.row2col[row]
-        c2r = C.col2row[col]
-        warn("row or column already contains a link, no addition made row: ($row $r2c) col: ($c2r $col)")
+    if !iszero(C.row2col[row])
+        @warn "row non-empty no addition made"
+    elseif !iszero(C.col2row[col])
+        @warn "col non-empty no addition made"
     else
         C.row2col[row] = col
         C.col2row[col] = row
@@ -208,13 +221,17 @@ add_link(row::G, col::G, C::LinkMatrix) where G <: Integer = add_link!(row, col,
 ```
 """
 function remove_link!(row::G, col::G, C::LinkMatrix) where G <: Integer
-    if iszero(C.row2col[row]) || iszero(C.col2row[col])
-        warn("row column pair not linked, no removal")
+    if iszero(row)
+        @warn "row is zero, no removal"
+    elseif iszero(col)
+        @warn "col is zero, no removal"
+    elseif C.row2col[row] != col
+        @warn "row column pair not linked, no removal"
+    elseif C.col2row[col] != row
+        @warn "row2col and col2row inconsistent debugging needed"
     else
         C.row2col[row] = zero(G)
-        dropzeros!(C.row2col)
         C.col2row[col] = zero(G)
-        dropzeros!(C.col2row)
         C.nlink -= one(G)
     end
     return C
@@ -239,6 +256,35 @@ end
 """
 remove_link(row::G, col::G, C::LinkMatrix) where G <: Integer = remove_link!(row, col, deepcopy(C))
 
+function rowswitch_link!(newrow::G, col::G, C::LinkMatrix{G}) where G <: Integer
+    if iszero(C.col2row[col])
+        @warn "Col not linked, no switch made"
+    elseif !iszero(C.row2col[newrow])
+        @warn "Newrow already assigned, no switch made"
+    else
+        C.row2col[C.col2row[col]] = zero(G)
+        C.col2row[col] = newrow
+        C.row2col[newrow] = col
+    end
+    return C
+end
+
+rowswitch_link(newrow::G, col::G, C::LinkMatrix{G}) where G <: Integer = rowswitch_link!(newrow, col, deepcopy(C))
+
+function colswitch_link!(row::G, newcol::G, C::LinkMatrix{G}) where G <: Integer
+    if iszero(C.row2col[row])
+        @warn "Row not linked, no switch made"
+    elseif !iszero(C.col2row[newcol])
+        @warn "Newcol already assigned, no switch made"
+        C.col2row[C.row2col[row]] = zero(G)
+        C.row2col[row] = newcol
+        C.col2row[newcol] = row
+    end
+    return C
+end
+
+colswitch_link(row::G, newcol::G, C::LinkMatrix{G}) where G <: Integer = colswitch_link!(row, newcol, deepcopy(C))
+
 """
     f(x::Type)
 
@@ -256,14 +302,25 @@ remove_link(row::G, col::G, C::LinkMatrix) where G <: Integer = remove_link!(row
 
 ```
 """
-function switch_link!(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer
-    if (C.row2col[row1] != col1) || (C.row2col[row2] != col2)
-        warn("provided pairs not current links, no switch")
+function doubleswitch_link!(newrow::G, newcol::G, C::LinkMatrix) where G <: Integer
+    if iszero(newrow)
+        @warn "Newrow is zero, no switch made"
+    elseif iszero(newcol)
+        @warn "Newcol is zero, no switch made"
+    elseif iszero(C.row2col[newrow])
+        @warn "Newrow not linked, no switch made"
+    elseif iszero(C.col2row[newcol])
+        @warn "New col not linked, no switch made"
+    elseif C.row2col[newrow] == newcol
+        @warn "Newrow and newcol already linked, no switch made"
+    else
+        col = C.row2col[newrow]
+        row = C.col2row[newcol]
+        C.row2col[row] = col
+        C.col2row[col] = row
+        C.row2col[newrow] = newcol
+        C.col2row[newcol] = newrow
     end
-    C.row2col[row1] = col2
-    C.row2col[row2] = col1
-    C.col2row[col1] = row2
-    C.col2row[col2] = row1
     return C
 end
 
@@ -284,4 +341,4 @@ end
 
 ```
 """
-switch_link(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer = switch_link!(row1, col1, row2, col2, deepcopy(C))
+doubleswitch_link(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer = doubleswitch_link!(row1, col1, row2, col2, deepcopy(C))

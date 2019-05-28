@@ -20,7 +20,9 @@ export ComparisonSummary,
 export LinkMatrix,
     add_link, add_link!,
     remove_link!, remove_link,
-    switch!_link, switch_link
+    rowswitch_link!, rowswitch_link,
+    switchcol_link!, switchcol_link,
+    doubleswitch!_link, doubleswitch_link
 export ParameterChain, get_linkcounts, get_linkstagecounts
 export E_step, M_step, estimate_EM
 export ConnectedComponents,

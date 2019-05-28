@@ -83,7 +83,7 @@ function randomwalk1_move!(row::T, col::T, C::LinkMatrix{T}) where T <: Integer
             remove_link!(row, col, C)
             return C
         else ##double switch move
-            #switch_link!(row, colalt, rowalt, col), test...)
+            #doubleswitch_link!(row, colalt, rowalt, col), test...)
             rowalt = C.col2row[col]
             colalt = C.row2col[row]
             C.col2row[colalt] = rowalt
