@@ -86,22 +86,6 @@ function get_component(ii::Integer, cc::ConnectedComponents)
     return rows, cols
 end
 
-function label2dict(x::Array{G}) where G <: Integer
-    labelMap = Dict{G, Array{G, 1}}()
-    for ii in one(G):G(length(x))
-        if haskey(labelMap, x[ii])
-            push!(labelMap[x[ii]], ii)
-        else
-            labelMap[x[ii]] = G[ii]
-        end
-    end
-    return labelMap
-end
-
-function get_components(cc::ConnectedComponents{G}) where G <: Integer
-    return label2dict(cc.rowLabels), label2dict(cc.colLabels)
-end
-
 """
     f(x::Type)
 
