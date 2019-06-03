@@ -16,833 +16,154 @@ function dropoutside!(compsum::SparseComparisonSummary{G, Tv, Ti}, cc::Connected
     return compsum
 end
 
-"""
-Compute the conditional dirchlet distribution for updating M and U parameters via a gibbs step
-"""
-function dirichlet_draw(matchcounts::Array{<:Integer, 1},
-                        compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                        priorM::Array{<: Real, 1} = zeros(Float64, length(matchcounts)),
-                        priorU::Array{<: Real, 1} = zeros(Float64, length(matchcounts)))
-    nonmatchcounts = compsum.counts - matchcounts
-    paramM = matchcounts + priorM
-    paramU = nonmatchcounts + priorU
-
-    pM = Array{Float64}(undef, length(priorM))
-    pU = Array{Float64}(undef, length(priorU))
-    
-    startidx = 1
-    for ii in 1:length(compsum.nlevels)
-        rng = range(startidx, length = compsum.nlevels[ii])
-        startidx += compsum.nlevels[ii]
-        pM[rng] = rand(Dirichlet(paramM[rng]))
-        pU[rng] = rand(Dirichlet(paramU[rng]))
-    end
-    return pM, pU
-end
-
-"""
-    Add Gibbs Step for M and U probabilities assuming a Dirchlet Prior
-    """
-function mh_gibbs_chain(
-    outerIter::Integer,
-    C0::LinkMatrix,
-    compsum::ComparisonSummary,
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpdfC::Function,
-    transitionC::Function;
-    innerIter::Integer = 1,
-    informedMoves::Bool = true,
-    ratioPrior::Bool = true,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
-    
-    #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, outerIter)
-    else
-        CArray = zeros(Int64, C0.nrow, outerIter)
-    end
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
-    transC = zeros(Int64, outerIter)
-
-    ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
-    C = deepcopy(C0)
-    matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    #loglikMargin = countDeltas' * logDiff, check this matrix multiplication
-    
-    #Outer iteration (recorded)
-    for ii in 1:outerIter
-
-        #Inner iteration
-        for jj in innerIter
-            
-            if informedMoves
-                propC, countdelta, ratioC = transitionC(C, compsum, countDeltas, logDiff, logpdfC, ratioPrior)
-                #propC, countdelta, marginLoglik, ratioC = transitionC(C, compsum, countDeltas, loglikMargin, logpdfC, ratioPrior)
-            else
-                propC, countdelta, ratioC = transitionC(C, compsum, countDeltas)
-                #propC, countdelta, marginLoglik, ratioC = transitionC(C, compsum, loglikeMargin)
-            end
-            
-            #compute likelihood ratios
-            if ratioPrior
-                ratio = exp(logpdfC(propC, C) + dot(countdelta, logDiff)) * ratioC
-                #ratio = exp(logpdfC(propC, C) + marginLoglik) * ratioC
-            else
-                ratio = exp(logpdfC(propC) - logpdfC(C) + dot(countdelta, logDiff)) * ratioC
-                #ratio = exp(logpdfC(propC) - logpdfC(C) + marginLogLik) * ratioC
-            end
-
-            ##Accept move with probability min(1.0, ratio)
-            if rand() < ratio
-
-                ##Check that move has actually occured
-                if C != propC
-                    transC[ii] += 1
-                    C = propC
-                    matchcounts += countdelta
-                end 
-            end
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-                #loglikMargin = countDeltas' * logDiff, check this matrix multiplication
-            end
-        end
-
-        ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-            #loglikMargin = countDeltas' * logDiff, check this matrix multiplication
-        end
-        
-        #Add states to chain
-        if sparseLinks
-            CArray[:, ii] = C.row2col
-        else
-            CArray[:, ii] = full(C.row2col)
-        end
-        nlinkArray[ii] = C.nlink
-        MArray[:, ii] = pM
-        UArray[:, ii] = pU
-    end
-    return CArray', nlinkArray, MArray', UArray', transC
-end
-
-#@code_warntype
-#view()
-#, G <: Integer
-function mh_gibbs_chain(
-    outerIter::Integer,
-    C0::LinkMatrix,
-    blockRanges::Array{CartesianIndices{2}, 1},
-    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpdfC::Function,
-    transitionC::Function;
-    innerIter::Integer = 1,
-    informedMoves::Bool = true,
-    ratioPrior::Bool = true,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
-    
-    #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, outerIter)
-    else
-        CArray = zeros(Int64, C0.nrow, outerIter)
-    end
-    nblocks = length(blockRanges)
-    blockRows = map(x -> size(x)[1], blockRanges)
-    blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
-    transC = zeros(Int64, outerIter, nblocks)
-    
-    ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
-    C = deepcopy(C0)
-    matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    #loglikMargin = countDeltas' * logDiff, check this matrix multiplication
-    
-    #Outer iteration (recorded)
-    for ii in 1:outerIter
-
-        #Inner iteration
-        for jj in innerIter
-
-            #Loop over blocks
-            for kk in 1:nblocks
-                #if blockRows[kk] == 1
-                #    if blockCols[kk] = 1
-                #    else
-                #    end
-                #elseif blockCols[kk] = 1
-                #elseif blockRows[kk] == 2 && blockCols[kk] == 2
-                #end
-                #if blockRows[kk] == 1 && blockCols[kk] == 1
-                #    if rand() < logistic(dot(countDeltas[:, compsum.obsidx[blockRows[kk].start]], logDiff))
-                #       if !has_link(blockRows[kk].start..., C)
-                #           add_link!(blockRows[kk].start..., C)
-                #       end
-                #   else
-                #       if has_link(blockRows[kk].start..., C)
-                #           remove_link!(blockRows[kk].start..., C)
-                #       end
-                #   end
-                #end
-                
-                if informedMoves
-                    propC, countdelta, ratioC = transitionC(blockRanges[kk], C, compsum, countDeltas, logDiff, logpdfC, ratioPrior)
-                    #propC, countdelta, marginLoglik, ratioC = transitionC(blockRanges[kk], C, compsum, countDeltas, loglikMargin, logpdfC, ratioPrior)
-                else
-                    propC, countdelta, ratioC = transitionC(blockRanges[kk], C, compsum, countDeltas)
-                    #propC, countdelta, marginLoglik, ratioC = transitionC(blockRanges[kk], C, compsum, loglikeMargin)
-                end
-                
-                #compute likelihood ratios
-                if ratioPrior
-                    ratio = exp(logpdfC(propC, C) + dot(countdelta, logDiff)) * ratioC
-                    #ratio = exp(logpdfC(propC, C) + marginLoglik) * ratioC
-                else
-                    ratio = exp(logpdfC(propC) - logpdfC(C) + dot(countdelta, logDiff)) * ratioC
-                    #ratio = exp(logpdfC(propC) - logpdfC(C) + marginLogLik) * ratioC
-                end
-
-                ##Accept move with probability min(1.0, ratio)
-                if rand() < ratio
-                    
-                    ##Check that move has actually occured
-                    if C != propC
-                        transC[ii, kk] += 1
-                        C = propC
-                        matchcounts += countdelta
-                    end 
-                end
-            end #end block loop
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-            end
-        end
-
-        ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-        end
-        
-        #Add states to chain
-        if sparseLinks
-            CArray[:, ii] = C.row2col
-        else
-            CArray[:, ii] = full(C.row2col)
-        end
-        nlinkArray[ii] = C.nlink
-        MArray[:, ii] = pM
-        UArray[:, ii] = pU
-    end
-    return CArray', nlinkArray, MArray', UArray', transC
-end
-
 function mh_gibbs_count(
-    outerIter::Integer,
-    C0::LinkMatrix,
-    blockRanges::Array{CartesianIndices{2}, 1},
-    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpdfC::Function,
-    transitionC::Function;
-    innerIter::Integer = 1,
-    informedMoves::Bool = true,
-    ratioPrior::Bool = true,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
-    
-    #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, C0.ncol)
-    else
-        CArray = zeros(Int64, C0.nrow, C0.ncol)
-    end
-    nblocks = length(blockRanges)
-    blockRows = map(x -> size(x)[1], blockRanges)
-    blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
-    transC = zeros(Int64, nblocks)
-    
-    ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
-    C = deepcopy(C0)
-    matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    #loglikMargin = countDeltas' * logDiff, check this matrix multiplication
-    
-    #Outer iteration (recorded)
-    for ii in 1:outerIter
-
-        #Inner iteration
-        for jj in innerIter
-
-            #Loop over blocks
-            for kk in 1:nblocks
-                countdelta = countDeltas[:, compsum.obsidx[blockRanges[kk].start]]
-                if blockRows[kk] == 1 && blockCols[kk] == 1
-                    if iszero(C.row2col[blockRanges[kk].start[1]])
-                        propC = add_link(blockRanges[kk].start.I..., C)
-                        if ratioPrior
-                            lp1 = dot(logDiff, countdelta) + logpdfC(propC, C)
-                            if rand() <= logistic(lp1)
-                                C = propC
-                                transC[ii] += 1
-                                matchcounts += countdelta #increase if adding
-                            end
-                        else
-                            propC = remove_link(blockRanges[kk].start.I..., C)
-                            lp1 = dot(logDiff, countdelta) + logpdfC(C, propC)
-                            if rand() > logistic(lp1)
-                                C = propC
-                                transC[ii] += 1
-                                matchcounts -= countdelta #delete if subtracting
-                            end
-                        end
-                    else
-                    end
-                    continue
-                end
-                #if blockRows[kk] == 1
-                #    if blockCols[kk] = 1
-                #    else
-                #    end
-                #elseif blockCols[kk] = 1
-                #elseif blockRows[kk] == 2 && blockCols[kk] == 2
-                #end
-                #if blockRows[kk] == 1 && blockCols[kk] == 1
-                #    if rand() < logistic(dot(countDeltas[:, compsum.obsidx[blockRows[kk].start]], logDiff))
-                #       if !has_link(blockRows[kk].start..., C)
-                #           add_link!(blockRows[kk].start..., C)
-                #       end
-                #   else
-                #       if has_link(blockRows[kk].start..., C)
-                #           remove_link!(blockRows[kk].start..., C)
-                #       end
-                #   end
-                #end
-                
-                if informedMoves
-                    propC, countdelta, ratioC = transitionC(blockRanges[kk], C, compsum, countDeltas, logDiff, logpdfC, ratioPrior)
-                    #propC, countdelta, marginLoglik, ratioC = transitionC(blockRanges[kk], C, compsum, countDeltas, loglikMargin, logpdfC, ratioPrior)
-                else
-                    propC, countdelta, ratioC = transitionC(blockRanges[kk], C, compsum, countDeltas)
-                    #propC, countdelta, marginLoglik, ratioC = transitionC(blockRanges[kk], C, compsum, loglikeMargin)
-                end
-                
-                #compute likelihood ratios
-                if ratioPrior
-                    ratio = exp(logpdfC(propC, C) + dot(countdelta, logDiff)) * ratioC
-                    #ratio = exp(logpdfC(propC, C) + marginLoglik) * ratioC
-                else
-                    ratio = exp(logpdfC(propC) - logpdfC(C) + dot(countdelta, logDiff)) * ratioC
-                    #ratio = exp(logpdfC(propC) - logpdfC(C) + marginLogLik) * ratioC
-                end
-
-                ##Accept move with probability min(1.0, ratio)
-                if rand() < ratio
-                    
-                    ##Check that move has actually occured
-                    if C != propC
-                        transC[kk] += 1
-                        C = propC
-                        matchcounts += countdelta
-                    end 
-                end
-            end #end block loop
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-            end
-        end
-
-        ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-        end
-        
-        #Add states to chain
-        if sparseLinks
-            for (row, col) in zip(findnz(C.row2col)...)
-                CArray[row, col] += 1
-            end
-        else
-            for row in 1:compsum.nrow
-                if !izero(C.row2col[row])
-                    CArray[row, row2col[row]] += 1
-                end
-            end
-        end
-        nlinkArray[ii] = C.nlink
-        MArray[:, ii] = pM
-        UArray[:, ii] = pU
-    end
-return CArray, nlinkArray, MArray', UArray', transC, C
-end
-
-function mh_gibbs_chain_inplace(
-    outerIter::Integer,
+    nsteps::Integer,
     C0::LinkMatrix,
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
+    block2rows::Dict{G, Array{G, 1}},
+    block2cols::Dict{G, Array{G, 1}},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
-    logpdfC::Function,
-    transitionC!::Function;
-    innerIter::Integer = 1,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
-    
-    #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, outerIter)
-    else
-        CArray = zeros(Int64, C0.nrow, outerIter)
-    end
-    
-    #CArray = Dict{Int64,Array{Int64,2}}()
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
-    transC = 0
-    
-    ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
-    C = deepcopy(C0)
-    matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    loglikMargin = countDeltas' * logDiff
-    
-    #Outer iteration (recorded)
-    for ii in 1:outerIter
-
-        #Inner iteration
-        for jj in innerIter
-            
-            countdelta, move = transitionC!(C, compsum, loglikMargin, countDeltas, logpdfC)
-
-            if move
-                transC += 1
-                matchcounts += countdelta
-            end
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-                loglikMargin = countDeltas' * logDiff
-            end
-        end
-
-        ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-            loglikMargin = countDeltas' * logDiff
-        end
-        
-        #Add states to chain
-        if sparseLinks
-            CArray[:, ii] = C.row2col
-        else
-            CArray[:, ii] = full(C.row2col)
-        end
-        
-        nlinkArray[ii] = C.nlink
-        MArray[:, ii] = pM
-        UArray[:, ii] = pU
-    end
-    return CArray, nlinkArray, MArray', UArray', transC, C
-end
-
-function mh_gibbs_chain_inplace(
-    outerIter::Integer,
-    C0::LinkMatrix,
-    blockRanges::Array{CartesianIndices{2}, 1},
-    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpdfC::Function,
-    transitionC!::Function;
-    innerIter::Integer = 1,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
-
-    #priorType::String = "base"
-    
-    #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, outerIter)
-    else
-        CArray = zeros(Int64, C0.nrow, outerIter)
-    end
-    
-    nblocks = length(blockRanges)
-    blockRows = map(x -> size(x)[1], blockRanges)
-    blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
-    transC = zeros(Int64, nblocks)
-    
-    ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
-    C = deepcopy(C0)
-    matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    loglikMargin = countDeltas' * logDiff
-    
-    #Outer iteration (recorded)
-    for ii in 1:outerIter
-
-        #Inner iteration
-        for jj in innerIter
-
-            #Loop over blocks
-            for kk in 1:nblocks
-                move = false
-                countdelta = zeros(matchcounts)
-                if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                    countdelta, move = singleton_gibbs!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                else
-                    countdelta, move = transitionC!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                end
-                if move
-                    transC[kk] += 1
-                    matchcounts += countdelta
-                end
-            end #end block loop
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-                loglikMargin = countDeltas' * logDiff
-            end
-        end
-
-        ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-            loglikMargin = countDeltas' * logDiff
-        end
-
-        #Add states to chain
-        if sparseLinks
-            CArray[:, ii] = C.row2col
-        else
-            CArray[:, ii] = full(C.row2col)
-        end
-        
-        nlinkArray[ii] = C.nlink
-        MArray[:, ii] = pM
-        UArray[:, ii] = pU
-    end
-    return CArray, nlinkArray, MArray', UArray', transC, C
-end
-
-function mh_gibbs_count_inplace(
-    outerIter::Integer,
-    C0::LinkMatrix,
-    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpdfC::Function,
-    transitionC!::Function;
-    innerIter::Integer = 1,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
-    
-    #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, C0.ncol)
-    else
-        CArray = zeros(Int64, C0.nrow, C0.ncol)
-    end
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
-    transC = 0
-    
-    ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
-    C = deepcopy(C0)
-    matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    loglikMargin = countDeltas' * logDiff
-    
-    #Outer iteration (recorded)
-    for ii in 1:outerIter
-
-        #Inner iteration
-        for jj in innerIter
-            
-            countdelta, move = transitionC!(C, compsum, loglikMargin, countDeltas, logpdfC)
-
-            if move
-                transC += 1
-                matchcounts += countdelta
-            end
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-                loglikMargin = countDeltas' * logDiff
-            end
-        end
-
-        ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-            loglikMargin = countDeltas' * logDiff
-        end
-        
-        #Add states to chain
-        if sparseLinks
-            for (row, col) in zip(findnz(C.row2col)...)
-                CArray[row, col] += 1
-            end
-        else
-            for row in 1:compsum.nrow
-                if !izero(C.row2col[row])
-                    CArray[row, row2col[row]] += 1
-                end
-            end
-        end
-        nlinkArray[ii] = C.nlink
-        MArray[:, ii] = pM
-        UArray[:, ii] = pU
-    end
-    return CArray, nlinkArray, MArray', UArray', transC, C
-end
-
-function mh_gibbs_count_inplace(
-    outerIter::Integer,
-    C0::LinkMatrix,
-    blockRanges::Array{CartesianIndices{2}, 1},
-    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpdfC::Function,
-    transitionC!::Function;
-    innerIter::Integer = 1,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
-
-    #priorType::String = "base"
-    
-    #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, C0.ncol)
-    else
-        CArray = zeros(Int64, C0.nrow, C0.ncol)
-    end
-    nblocks = length(blockRanges)
-    blockRows = map(x -> size(x)[1], blockRanges)
-    blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
-    transC = zeros(Int64, nblocks)
-    
-    ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
-    C = deepcopy(C0)
-    matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    loglikMargin = countDeltas' * logDiff
-    
-    #Outer iteration (recorded)
-    for ii in 1:outerIter
-
-        #Inner iteration
-        for jj in innerIter
-
-            #Loop over blocks
-            for kk in 1:nblocks
-                move = false
-                countdelta = zeros(matchcounts)
-                if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                    countdelta, move = singleton_gibbs!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                else
-                    countdelta, move = transitionC!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                end
-                if move
-                    transC[kk] += 1
-                    matchcounts += countdelta
-                end
-            end #end block loop
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-                loglikMargin = countDeltas' * logDiff
-            end
-        end
-
-        ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-            loglikMargin = countDeltas' * logDiff
-        end
-
-        #Add states to chain
-        if sparseLinks
-            for (row, col) in zip(findnz(C.row2col)...)
-                CArray[row, col] += 1
-            end
-        else
-            for row in 1:compsum.nrow
-                if !izero(C.row2col[row])
-                    CArray[row, row2col[row]] += 1
-                end
-            end
-        end
-
-        nlinkArray[ii] = C.nlink
-        MArray[:, ii] = pM
-        UArray[:, ii] = pU
-    end
-    return CArray, nlinkArray, MArray', UArray', transC, C
-end
-
-function mh_gibbs_count_inplace(
-    outerIter::Integer,
-    C0::LinkMatrix,
-    blockRanges::Array{CartesianIndices{2}, 1},
-    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpdfC::Function,
+    logpdfC::Union{Function, Array{<:AbstractFloat, 1}},
     transitionC!::Function,
-    rowtype::Array{<:Integer, 1},
-    coltype::Array{<:Integer, 1};
-    innerIter::Integer = 1,
-    gibbsInner::Bool = true,
-    sparseLinks::Bool = true) where T <: Real
+    loglikMissing::AbstractFloat = -Inf) where {G <: Integer, T <: Real}
+    
+    #MCMC Chains
+    CArray = spzeros(Int, C0.nrow, C0.ncol)
+
+    nblocks = length(keys(block2rows))
+    blockRows = map(x -> length(block2rows[x]), 1:nblocks)
+    blockCols = map(x -> length(block2cols[x]), 1:nblocks)
+    nlinkArray = Array{Int}(undef, nsteps)
+    MArray = Array{Float64}(undef, length(priorM), nsteps)
+    UArray = Array{Float64}(undef, length(priorU), nsteps)
+    transC = zeros(Int64, nblocks)
+    
+    ##Initial States
+    countDeltas = counts_delta(compsum) #each column is an observation
+    C = deepcopy(C0)
+    matchcounts, matchobs = counts_matches(C, compsum)
+    pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+    
+    #Outer iteration (recorded)
+    for ii in 1:nsteps
+
+        #Loop over blocks
+        for kk in 1:nblocks
+            move = false
+            countdelta = zeros(eltype(matchcounts), length(matchcounts))
+            if (blockRows[kk] == 1) && (blockCols[kk] == 1)
+                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
+            else
+                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
+            end
+            if move
+                transC[kk] += 1
+                matchcounts += countdelta
+            end
+            #println("step: $ii")
+            #println("move: $move")
+            #println(C.row2col)
+            
+            #if matchcounts != counts_matches(C, compsum)[1]
+            #    println("step: $ii")
+            #    println("move: $move")
+            #    println("nlinks: $(C.nlink)")
+            #    println("links trace: $(nlinkArray[ii - 1])")
+            #    println("matchcounts: $matchcounts")
+            #    println("$(matchcounts - counts_matches(C, compsum)[1])")
+            #    error("matchcounts off")
+            #end
+        end #end block loop
+
+        ##Perform Gibbs update if performed with outer iterations
+        pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+
+        #Add states to chain
+        for row in 1:C.nrow
+            if !iszero(C.row2col[row])
+                CArray[row, C.row2col[row]] += 1
+            end
+        end
+        nlinkArray[ii] = C.nlink
+        MArray[:, ii] = pM
+        UArray[:, ii] = pU
+    end
+    #return CArray, nlinkArray, MArray', UArray', transC, C
+    ParameterChain(counts2indicies(CArray), nlinkArray, permutedims(MArray, [2, 1]), permutedims(UArray, [2, 1]), nsteps, false), transC, C
+end
+
+function mh_gibbs_trace(
+    nsteps::Integer,
+    C0::LinkMatrix,
+    compsum::Union{ComparisonSummary, SparseComparisonSummary},
+    block2rows::Dict{G, Array{G, 1}},
+    block2cols::Dict{G, Array{G, 1}},
+    priorM::Array{T, 1},
+    priorU::Array{T, 1},
+    logpdfC::Union{Function, Array{<:AbstractFloat, 1}},
+    transitionC!::Function,
+    loglikMissing::AbstractFloat = -Inf) where {G <: Integer, T <: Real}
 
     #priorType::String = "base"
     
     #MCMC Chains
-    if sparseLinks
-        CArray = spzeros(Int64, C0.nrow, C0.ncol)
-    else
-        CArray = zeros(Int64, C0.nrow, C0.ncol)
-    end
-    nblocks = length(blockRanges)
-    blockRows = map(x -> size(x)[1], blockRanges)
-    blockCols = map(x -> size(x)[2], blockRanges)
-    nlinkArray = Array{Int64}(undef, outerIter)
-    MArray = Array{Float64}(undef, length(priorM), outerIter)
-    UArray = Array{Float64}(undef, length(priorU), outerIter)
+    outrows = Int[]
+    outcols = Int[]
+    outstart = Int[]
+    outstop = Int[]
+    
+    nblocks = length(keys(block2rows))
+    blockRows = map(x -> length(block2rows[x]), 1:nblocks)
+    blockCols = map(x -> length(block2cols[x]), 1:nblocks)
+    nlinkArray = Array{Int64}(undef, nsteps)
+    MArray = Array{Float64}(undef, length(priorM), nsteps)
+    UArray = Array{Float64}(undef, length(priorU), nsteps)
     transC = zeros(Int64, nblocks)
-
-    ##Add counting for row and column type
-    rowdim = maximum(rowtype) + 1
-    coldim = maximum(coltype) + 1
-    ntypesArray = zeros(Int64, rowdim * coldim, outerIter)
     
     ##Initial States
     countDeltas = counts_delta(compsum) #each column is an observation
-    obsDeltas = obs_delta(compsum)
     C = deepcopy(C0)
     matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-    logDiff = log.(pM) - log.(pU)
-    loglikMargin = countDeltas' * logDiff
+    pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+
+    currrow2col = copy(C.row2col)
+    startrow2col = ones(Int, length(currrow2col)) #zeros(Int, length(currrow2col))
     
     #Outer iteration (recorded)
-    for ii in 1:outerIter
+    for ii in 1:nsteps
 
-        #Inner iteration
-        for jj in innerIter
-
-            #Loop over blocks
-            for kk in 1:nblocks
-                move = false
-                countdelta = zeros(matchcounts)
-                if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                    countdelta, move = singleton_gibbs!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                else
-                    countdelta, move = transitionC!(blockRanges[kk], C, compsum, loglikMargin, countDeltas, logpdfC)
-                end
-                if move
-                    transC[kk] += 1
-                    matchcounts += countdelta
-                end
-            end #end block loop
-
-            ##Perform Gibbs update if performed with inner iterations
-            if gibbsInner
-                pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-                logDiff = log.(pM) - log.(pU)
-                loglikMargin = countDeltas' * logDiff
+        #Loop over blocks
+        for kk in 1:nblocks
+            move = false
+            countdelta = zeros(eltype(matchcounts), length(matchcounts))
+            if (blockRows[kk] == 1) && (blockCols[kk] == 1)
+                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
+            else
+                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
             end
-        end
-
+            if move
+                transC[kk] += 1
+                matchcounts += countdelta
+            end
+        end #end block loop
+        
         ##Perform Gibbs update if performed with outer iterations
-        if !gibbsInner
-            pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
-            logDiff = log.(pM) - log.(pU)
-            loglikMargin = countDeltas' * logDiff
-        end
-
+        pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+        
         #Add states to chain
-        if sparseLinks
-            for (row, col) in zip(findnz(C.row2col)...)
-                CArray[row, col] += 1
-                ntypesArray[sub2ind((rowdim, coldim), rowtype[row] + 1, coltype[col] + 1), ii] += 1
-            end
-        else
-            for row in 1:compsum.nrow
-                if !izero(C.row2col[row])
-                    CArray[row, row2col[row]] += 1
-                    ntypesArray[sub2ind((rowdim, coldim), rowtype[row] + 1, coltype[row2col[row]] + 1), ii] += 1
+        for row in 1:C.nrow
+            if currrow2col[row] != C.row2col[row]
+                #record if deletion or move (not additions)
+                if !iszero(currrow2col[row])
+                    push!(outrows, row)
+                    push!(outcols, currrow2col[row])
+                    push!(outstart, startrow2col[row])
+                    push!(outstop, ii - 1)                    
                 end
+                
+                currrow2col[row] = C.row2col[row]
+                startrow2col[row] = ii
             end
         end
         
@@ -850,5 +171,17 @@ function mh_gibbs_count_inplace(
         MArray[:, ii] = pM
         UArray[:, ii] = pU
     end
-    return CArray, nlinkArray, ntypesArray', MArray', UArray', transC, C
+
+    #add current links to chain
+    for row in 1:C.nrow
+        if !iszero(C.row2col[row])
+            push!(outrows, row)
+            push!(outcols, currrow2col[row])
+            push!(outstart, startrow2col[row])
+            push!(outstop, nsteps)                    
+        end
+    end
+    
+    #return CArray, nlinkArray, MArray', UArray', transC, C
+    ParameterChain([outrows outcols outstart outstop][outstart .<= outstop, :], nlinkArray, permutedims(MArray, [2, 1]), permutedims(UArray, [2, 1]), nsteps, false), transC, C
 end

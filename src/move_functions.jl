@@ -1,4 +1,42 @@
 """
+
+"""
+function idx2pair(idx::Integer, nrow::Integer)
+    col, row = divrem(idx, nrow)
+    if iszero(row)
+        row = typeof(row)(nrow)
+    else
+        col += one(typeof(col))
+    end
+    return row, col
+end
+
+"""
+
+"""
+function pair2idx(row::G, col::G, nrow::Integer) where G <: Integer
+    return (col - one(G)) * nrow + row
+end
+
+"""
+
+"""
+function sample_proposal_full(rows::Array{G, 1}, cols::Array{G, 1}, logweights::Array{T, 1}, logsumweights::T = logsumexp(logweights)) where {G <: Integer, T <: AbstractFloat}
+    idx = sample(Weights(exp.(logweights .- logsumweights)))
+    ridx, cidx = idx2pair(idx, length(rows))
+    return rows[ridx], cols[cidx], logweights[idx]
+end
+
+"""
+
+"""
+function sample_proposal_sparse(rows::Array{G, 1}, cols::Array{G, 1}, logweights::Array{T, 1}, logsumweights::T = logsumexp(logweights)) where {G <: Integer, T <: AbstractFloat}
+    idx = sample(Weights(exp.(logweights .- logsumweights)))
+    return rows[idx], cols[idx], logweights[idx]
+end
+
+
+"""
     f(x::Type)
 
 ### Arguments
@@ -26,6 +64,51 @@ function get_loglik(row::G, col::G, compsum::SparseComparisonSummary, loglikMarg
 end
 
 """
+
+"""
+function loglik_add(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf)  where {G <: Integer, T <: AbstractFloat}
+    loglikdelta = get_loglik(row, col, compsum, loglikMargin, loglikMissing)
+    return loglikdelta
+end
+
+"""
+
+"""
+function loglik_remove(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf)  where {G <: Integer, T <: AbstractFloat}
+    loglikdelta = -get_loglik(row, col, compsum, loglikMargin, loglikMissing)
+    return loglikdelta
+end
+
+"""
+
+"""
+function loglik_rowswitch(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf)  where {G <: Integer, T <: AbstractFloat}
+    loglikdelta = get_loglik(row, col, compsum, loglikMargin, loglikMissing) - get_loglik(C.col2row[col], col, compsum, loglikMargin, loglikMissing)
+    return loglikdelta
+end
+
+"""
+
+"""
+function loglik_colswitch(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf)  where {G <: Integer, T <: AbstractFloat}
+    loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(row, C.row2col[row], compsum, loglikMargin, loglikMissing)
+    return loglikdelta
+end
+
+"""
+
+"""
+function loglik_doubleswitch(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf)  where {G <: Integer, T <: AbstractFloat}
+    rowalt = C.col2row[col]
+    colalt = C.row2col[row]
+    loglikdelta = get_loglik(row, col, compsum, loglikMargin, loglikMissing)
+    loglikdelta += get_loglik(rowalt, colalt, compsum, loglikMargin, loglikMissing)
+    loglikdelta -= get_loglik(row, colalt, compsum, loglikMargin, loglikMissing)
+    loglikdelta -= get_loglik(rowalt, col, compsum, loglikMargin, loglikMissing)
+    return loglikdelta
+end
+
+"""
     f(x::Type)
 
 ### Arguments
@@ -42,18 +125,74 @@ end
 
 ```
 """
-get_counts(row::G, col::G, compsum::ComparisonSummary, countDeltas::Array{T, 2}) where {G <: Integer, T <: Integer} = countDeltas[:, compsum.obsidx[row, col]]
+get_counts(row::G, col::G, compsum::ComparisonSummary, countMargin::Array{T, 2}) where {G <: Integer, T <: Integer} = countMargin[:, compsum.obsidx[row, col]]
 
 
-function get_counts(row::G, col::G, compsum::SparseComparisonSummary, countDeltas::Array{T, 2}) where {G <: Integer, T <: Integer}
+function get_counts(row::G, col::G, compsum::SparseComparisonSummary, countMargin::Array{T, 2}) where {G <: Integer, T <: Integer}
     if iszero(compsum.obsidx[row, col])
-        return zeros(T, size(countDeltas, 1))
+        return zeros(T, size(countMargin, 1))
     else
-        return countDeltas[:, compsum.obsidx[row, col]]
+        return countMargin[:, compsum.obsidx[row, col]]
     end
 end
 
+"""
 
+"""
+function counts_add(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countMargin::Array{T, 2})  where {G <: Integer, T <: Integer}
+    countsdelta = get_counts(row, col, compsum, countMargin)
+    return countsdelta
+end
+
+function counts_remove(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countMargin::Array{T, 2})  where {G <: Integer, T <: Integer}
+    countsdelta = -get_counts(row, col, compsum, countMargin)
+    return countsdelta
+end
+
+function counts_rowswitch(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countMargin::Array{T, 2})  where {G <: Integer, T <: Integer}
+    countsdelta = get_counts(row, col, compsum, countMargin) - get_counts(C.col2row[col], col, compsum, countMargin)
+    return countsdelta
+end
+
+function counts_colswitch(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countMargin::Array{T, 2})  where {G <: Integer, T <: Integer}
+    countsdelta = get_counts(row, col, compsum, countMargin) - get_counts(row, C.row2col[row], compsum, countMargin)
+    return countsdelta
+end
+
+function counts_doubleswitch(row::G, col::G, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countMargin::Array{T, 2})  where {G <: Integer, T <: Integer} 
+    rowalt = C.col2row[col]
+    colalt = C.row2col[row]
+    countsdelta = get_counts(row, col, compsum, countMargin)
+    countsdelta += get_counts(rowalt, colalt, compsum, countMargin)
+    countsdelta -= get_counts(row, colalt, compsum, countMargin)
+    countsdelta -= get_counts(rowalt, col, compsum, countMargin)
+    return countsdelta
+end
+
+#uses a margin, eventually expand to more general form
+function logpCRatios_add(C::LinkMatrix{G}, logpCRatio::Function) where G <: Integer
+    return logpdfC(one(G), C)
+end
+
+function logpCRatios_remove(C::LinkMatrix{G}, logpCRatio::Function) where G <: Integer
+    return logpdfC(-one(G), C)
+end
+
+function logpCRatios_add(C::LinkMatrix{G}, logpCRatio::Array{T, 1}) where {G <: Integer, T <: AbstractFloat}
+    if C.nlink == length(logpCRatio)
+        return -T(Inf)
+    else
+        return logpCRatio[C.nlink + one(G)]
+    end
+end
+
+function logpCRatios_remove(C::LinkMatrix{G}, logpCRatio::Array{T, 1}) where {G <: Integer, T <: AbstractFloat}
+    if iszero(C.nlink)
+        return -T(Inf)
+    else
+        return -logpCRatio[C.nlink]
+    end
+end
 
 """
     locbal_kernel_move!(row, column, LinkMatrix) -> MovedLinkMatrix
@@ -64,73 +203,56 @@ function randomwalk1_move!(row::T, col::T, C::LinkMatrix{T}) where T <: Integer
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
             add_link!(row, col, C)
-            return C
         else ##single switch move I
-            C.row2col[C.col2row[col]] = zero(T)
-            dropzeros!(C.row2col)
-            C.col2row[col] = row
-            C.row2col[row] = col
-            return C
+            rowswitch_link!(row, col, C)
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            C.col2row[C.row2col[row]] = zero(T)
-            dropzeros!(C.col2row)
-            C.col2row[col] = row
-            C.row2col[row] = col
-            return C
+            colswitch_link!(row, col, C)
         elseif C.col2row[col] == row ##delete move
             remove_link!(row, col, C)
-            return C
         else ##double switch move
-            #doubleswitch_link!(row, colalt, rowalt, col), test...)
-            rowalt = C.col2row[col]
-            colalt = C.row2col[row]
-            C.col2row[colalt] = rowalt
-            C.row2col[rowalt] = colalt
-            C.col2row[col] = row
-            C.row2col[row] = col
-            return C
+            doubleswitch_link!(row, col, C)
         end
+    end
+    return C
+end
+
+function randomwalk1_inverse(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
+    if iszero(C.row2col[row])
+        if iszero(C.col2row[col])
+            return row, col
+        else
+            return C.col2row[col], col
+        end
+    elseif iszero(C.col2row[col]) #row not zero, col zero
+        return  row, C.row2col[row]
+    elseif C.row2col[row] == col
+        return row, col
+    else
+        return row, C.row2col[row] #could also do C.col2row[col], col
     end
 end
 
-randomwalk1_move!(idx::CartesianIndex{2}, C::LinkMatrix{T}) where {T <: Integer} = randomwalk1_move!(idx.I[1], idx.I[2], C)
-
-randomwalk1_move(row::T, col::T, C::LinkMatrix{T}) where {T <: Integer} = randomwalk1_move!(row, col, deepcopy(C))
-randomwalk1_move(idx::CartesianIndex{2}, C::LinkMatrix{T}) where {T <: Integer} = randomwalk1_move!(idx.I[1], idx.I[2], deepcopy(C))
-
 """
-    f(x::Type)
+    locbal_kernel_move!(row, column, LinkMatrix) -> MovedLinkMatrix
 
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+Performes a move as described in Zanella (2017) appendix C
 """
-function randomwalk1_movetype(row::T, col::T, C::LinkMatrix) where {T <: Integer}
+function randomwalk1_loglikpCratio(row::Integer, col::Integer, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, logpCRatioAdd::T, logpCRatioRemove::T, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf) where T <: AbstractFloat
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            return 1
+            return loglik_add(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatioAdd, false
         else ##single switch move I
-            return 2
+            return loglik_rowswitch(row, col, C, compsum, loglikMargin, loglikMissing), false
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            return 3
+            return loglik_colswitch(row, col, C, compsum, loglikMargin, loglikMissing), false
         elseif C.col2row[col] == row ##delete move
-            return 4
+            return loglik_remove(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatioRemove, false
         else ##double switch move
-            return 5
+            return loglik_doubleswitch(row, col, C, compsum, loglikMargin, loglikMissing), true
         end
     end
 end
@@ -140,652 +262,132 @@ end
 
 Performes a move as described in Zanella (2017) appendix C
 """
-function randomwalk1_countdelta(row::T, col::T,
-                                C::LinkMatrix{T},
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                countDeltas::Array{<:Integer, 2}) where T <: Integer
+function randomwalk1_countmargin(row::Integer, col::Integer, C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countMargin::Array{<:Integer, 2})
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            return countdelta, 1
+            return counts_add(row, col, C, compsum, countMargin)
         else ##single switch move I
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
-            return countdelta, 2
+            return counts_rowswitch(row, col, C, compsum, countMargin)
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
-            return countdelta, 3
+            return counts_colswitch(row, col, C, compsum, countMargin)
         elseif C.col2row[col] == row ##delete move
-            countdelta = -get_counts(row, col, compsum, countDeltas)
-            return countdelta, 4
+            return counts_remove(row, col, C, compsum, countMargin)
         else ##double switch move
-            rowalt = C.col2row[col]
-            colalt = C.row2col[row]
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
-            countdelta -= get_counts(row, colalt, compsum, countDeltas)
-            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
-            return countdelta, 5
+            return counts_doubleswitch(row, col, C, compsum, countMargin)
         end
     end
 end
 
-randomwalk1_countdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countDeltas::Array{<:Integer, 2}) where T <: Integer =
-    randomwalk1_countdelta(idx.I[1], idx.I[2], C, compsum, countDeltas)
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_loglikdelta(row::T, col::T,
-                                 C::LinkMatrix{T},
-                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                 loglikMargin::Array{<:AbstractFloat, 1}) where T <: Integer
-    if iszero(C.row2col[row])
-        if iszero(C.col2row[col]) ##add move
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
-            return loglikdelta, 1
-        else ##single switch move I
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(C.col2row[col], col, compsum, loglikMargin)
-            return loglikdelta, 2
-        end
-    else
-        if iszero(C.col2row[col]) ##single switch move II
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(row, C.row2col[row], compsum, loglikMargin)
-            return loglikdelta, 3
-        elseif C.col2row[col] == row ##delete move
-            loglikdelta = -get_loglik(row, col, compsum, loglikMargin)
-            return loglikdelta, 4
-        else ##double switch move
-            rowalt = C.col2row[col]
-            colalt = C.row2col[row]
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
-            loglikdelta += get_loglik(rowalt, colalt, compsum, loglikMargin)
-            loglikdelta -= get_loglik(row, colalt, compsum, loglikMargin)
-            loglikdelta -= get_loglik(rowalt, col, compsum, loglikMargin)
-            return loglikdelta, 5
-        end
-    end
+function randomwalk1_log_movecount(nrow::Integer, ncol::Integer, nlink::Integer)
+    return log(nrow * ncol - div(nlink * (nlink - 1), 2))
 end
 
-randomwalk1_loglikdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{<:AbstractFloat, 1}) where T <: Integer =
-    randomwalk1_loglikdelta(idx.I[1], idx.I[2], C, compsum, loglikMargin)
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_countobsdelta(row::T, col::T,
-                                   C::LinkMatrix{T},
-                                   compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                   countDeltas::Array{<:Integer, 2},
-                                   obsDeltas::Array{<:Integer, 2}) where T <: Integer
-    if iszero(C.row2col[row])
-        if iszero(C.col2row[col]) ##add move
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            obsdelta = get_counts(row, col, compsum, obsDeltas)
-            return countdelta, obsdelta, 1
-        else ##single switch move I
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
-            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(C.col2row[col], col, compsum, obsDeltas)
-            return countdelta, obsdelta, 2
-        end
-    else
-        if iszero(C.col2row[col]) ##single switch move II
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
-            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(row, C.row2col[row], compsum, obsDeltas)
-            return countdelta, obsdelta, 3
-        elseif C.col2row[col] == row ##delete move
-            countdelta = -get_counts(row, col, compsum, countDeltas)
-            obsdelta = -get_counts(row, col, compsum, obsDeltas)
-            return countdelta, obsdelta, 4
-        else ##double switch move
-            rowalt = C.col2row[col]
-            colalt = C.row2col[row]
-
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
-            countdelta -= get_counts(row, colalt, compsum, countDeltas)
-            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
-            
-            obsdelta = get_counts(row, col, compsum, obsDeltas)
-            obsdelta += get_counts(rowalt, colalt, compsum, obsDeltas)
-            obsdelta -= get_counts(row, colalt, compsum, obsDeltas)
-            obsdelta -= get_counts(rowalt, col, compsum, obsDeltas)
-            
-            return countdelta, obsdelta, 5
-        end
-    end
-end
-
-randomwalk1_countobsdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, countDeltas::Array{<:Integer, 2}, obsDeltas::Array{<:Integer, 2}) where T <: Integer =
-    randomwalk1_countobsdelta(idx.I[1], idx.I[2], C, compsum, countDeltas, obsDeltas)
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_loglikcountdelta(row::T, col::T,
-                                      C::LinkMatrix{T},
-                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                      loglikMargin::Array{<:AbstractFloat, 1},
-                                      countDeltas::Array{<:Integer, 2}) where T <: Integer
-    if iszero(C.row2col[row])
-        if iszero(C.col2row[col]) ##add move
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            return loglikdelta, countdelta, 1
-        else ##single switch move I
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(C.col2row[col], col, compsum, loglikMargin)
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
-            return loglikdelta, countdelta, 2
-        end
-    else
-        if iszero(C.col2row[col]) ##single switch move II
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(row, C.row2col[row], compsum, loglikMargin)
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
-            return loglikdelta, countdelta, 3
-        elseif C.col2row[col] == row ##delete move
-            loglikdelta = -get_loglik(row, col, compsum, loglikMargin)
-            countdelta = -get_counts(row, col, compsum, countDeltas)
-            return loglikdelta, countdelta, 4
-        else ##double switch move
-            rowalt = C.col2row[col]
-            colalt = C.row2col[row]
-            
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
-            loglikdelta += get_loglik(rowalt, colalt, compsum, loglikMargin)
-            loglikdelta -= get_loglik(row, colalt, compsum, loglikMargin)
-            loglikdelta -= get_loglik(rowalt, col, compsum, loglikMargin)
-            
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
-            countdelta -= get_counts(row, colalt, compsum, countDeltas)
-            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
-            
-            return loglikdelta, countdelta, 5
-        end
-    end
-end
-
-randomwalk1_loglikcountdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2}) where T <: Integer =
-    randomwalk1_loglikcountdelta(idx.I[1], idx.I[2], C, compsum, loglikMargin, countDeltas)
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_loglikcountobsdelta(row::T, col::T,
-                                         C::LinkMatrix{T},
-                                         compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                         loglikMargin::Array{<:AbstractFloat, 1},
-                                         countDeltas::Array{<:Integer, 2},
-                                         obsDeltas::Array{<:Integer, 2}) where T <: Integer
-    if iszero(C.row2col[row])
-        if iszero(C.col2row[col]) ##add move
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            obsdelta = get_counts(row, col, compsum, obsDeltas)
-            return loglikdelta, countdelta, obsdelta, 1
-        else ##single switch move I
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(C.col2row[col], col, compsum, loglikMargin)
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(C.col2row[col], col, compsum, countDeltas)
-            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(C.col2row[col], col, compsum, obsDeltas)
-            return loglikdelta, countdelta, obsdelta, 2
-        end
-    else
-        if iszero(C.col2row[col]) ##single switch move II
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin) - get_loglik(row, C.row2col[row], compsum, loglikMargin)
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
-            obsdelta = get_counts(row, col, compsum, obsDeltas) - get_counts(row, C.row2col[row], compsum, obsDeltas)
-            return loglikdelta, countdelta, obsdelta, 3
-        elseif C.col2row[col] == row ##delete move
-            loglikdelta = -get_loglik(row, col, compsum, loglikMargin)
-            countdelta = -get_counts(row, col, compsum, countDeltas)
-            obsdelta = -get_counts(row, col, compsum, obsDeltas)
-            return loglikdelta, countdelta, obsdelta, 4
-        else ##double switch move
-            rowalt = C.col2row[col]
-            colalt = C.row2col[row]
-            
-            loglikdelta = get_loglik(row, col, compsum, loglikMargin)
-            loglikdelta += get_loglik(rowalt, colalt, compsum, loglikMargin)
-            loglikdelta -= get_loglik(row, colalt, compsum, loglikMargin)
-            loglikdelta -= get_loglik(rowalt, col, compsum, loglikMargin)
-            
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            countdelta += get_counts(rowalt, colalt, compsum, countDeltas)
-            countdelta -= get_counts(row, colalt, compsum, countDeltas)
-            countdelta -= get_counts(rowalt, col, compsum, countDeltas)
-            
-            obsdelta = get_counts(row, col, compsum, obsDeltas)
-            obsdelta += get_counts(rowalt, colalt, compsum, obsDeltas)
-            obsdelta -= get_counts(row, colalt, compsum, obsDeltas)
-            obsdelta -= get_counts(rowalt, col, compsum, obsDeltas)
-            
-            return loglikdelta, countdelta, obsdelta, 5
-        end
-    end
-end
-
-randomwalk1_loglikcountobsdelta(idx::CartesianIndex{2}, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2}, obsDeltas::Array{<:Integer, 2}) where T <: Integer =
-    randomwalk1_loglikcountobsdelta(idx.I[1], idx.I[2], C, compsum, loglikMargin, countDeltas, obsDeltas)
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_movecount(nrow::Integer, ncol::Integer, nlink::Integer)
-    return nrow * ncol - div(nlink * (nlink - 1), 2)
-end
-
-randomwalk1_movecount(crng::CartesianIndices{2}, nlink::Integer) = randomwalk1_movecount(size(crng)[1], size(crng)[2], nlink)
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_reversemove(moverow::Integer, movecol::Integer, movetype::Integer, C::LinkMatrix)
-    #movetype = 1 => add
-    #movetype = 2 => switch link row
-    #movetype = 3 => switch link column
-    #movetype = 4 => delete
-    #movetype = 5 => double switch
-    if movetype == 1 || movetype == 4
-        return moverow, movecol
-    elseif movetype == 2
-        return C.col2row[movecol], movecol
-    elseif movetype == 3
-        return moverow, C.row2col[moverow]
-    elseif movetype == 5
-        return moverow, C.row2col[moverow] #correction from original coding
-    else
-        error("unexpected move type")
-        return nothing
-    end
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_movetype2ratio(movetype::Integer, C::LinkMatrix)
-    #ratio = P(move back) / P(move) = #moves / #moves back
-    if movetype == 1 #check ratio P(new -> old) / P(old -> new)
-        return randomwalk1_movecount(C.nrow, C.ncol, C.nlink) / randomwalk1_movecount(C.nrow, C.ncol, C.nlink + 1)
-        #ratio = (C.nrow * C.ncol - div(C.nlink * (C.nlink - 1), 2)) / (C.nrow * C.ncol - div(C.nlink * (C.nlink + 1), 2))
-    elseif movetype == 4 #check ratio P(new -> old) / P(old -> new)
-        return randomwalk1_movecount(C.nrow, C.ncol, C.nlink) / randomwalk1_movecount(C.nrow, C.ncol, C.nlink - 1)
-        #ratio = (C.nrow * C.ncol - div(C.nlink * (C.nlink - 1), 2)) / (C.nrow * C.ncol - div((C.nlink - 1) * (C.nlink - 2), 2))
-    else
-        return 1.0
-    end
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk1_draw(C::LinkMatrix,
-                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                          countDeltas::Array{<:Integer, 2})
+function randomwalk1_update!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
+                             C::LinkMatrix{G},
+                             compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                             countMargin::Array{A, 2},
+                             loglikMargin::Array{T, 1},
+                             logpdfC::Union{Function, Array{T, 1}},
+                             log_balance_function::Function = lidentity_balance,
+                             loglikMissing::T = -Inf) where {G <: Integer, T <: AbstractFloat, A <: Integer}
     
-    ii = Int(ceil(rand() * C.nrow))
-    jj = Int(ceil(rand() * C.ncol))
-    countdelta, movetype = randomwalk1_countdelta(ii, jj, C, compsum, countDeltas)
+    row = sample(rows)
+    col = sample(cols)
 
-    #only accept double switches with p = 0.5 to make sampling uniform over moves
-    if movetype == 5
-        if rand() < 0.5
-            return randomwalk1_draw(C, compsum, countDeltas)
+    #Resample if missing recordpair sampled
+    if iszero(compsum.obsidx[row, col])
+        return randomwalk1_update!(rows, cols, C, compsum, countMargin, loglikMargin, logpdfC, log_balance_function, loglikMissing)
+    end
+    
+    if iszero(C.row2col[row])
+        if iszero(C.col2row[col]) ##add move
+            loglik = loglik_add(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatios_add(C, logpdfC)
+            loglik += randomwalk1_log_movecount(length(rows), length(cols), C.nlink) - randomwalk1_log_movecount(length(rows), length(cols), C.nlink + one(G))
+        else ##single switch move I
+            loglik = loglik_rowswitch(row, col, C, compsum, loglikMargin, loglikMissing)
+        end
+    else
+        if iszero(C.col2row[col]) ##single switch move II
+            loglik = loglik_colswitch(row, col, C, compsum, loglikMargin, loglikMissing)
+        elseif C.col2row[col] == row ##delete move
+            loglik = loglik_remove(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatios_remove(C, logpdfC)
+            loglik += randomwalk1_log_movecount(length(rows), length(cols), C.nlink) - randomwalk1_log_movecount(length(rows), length(cols), C.nlink - one(G))
+        else ##double switch move
+            #only sample double switches with p = 0.5 to make sampling uniform over moves
+            if rand() < 0.5
+                return randomwalk1_update!(rows, cols, C, compsum, countMargin, loglikMargin, logpdfC, log_balance_function, loglikMissing)
+            end
+            loglik = loglik_doubleswitch(row, col, C, compsum, loglikMargin, loglikMissing)
         end
     end
-    moveratio = randomwalk1_movetype2ratio(movetype, C)
-    return randomwalk1_move(ii, jj, C), countdelta, moveratio
-end
 
-function randomwalk1_draw(rng::CartesianIndices{2},
-                          C::LinkMatrix,
-                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                          countDeltas::Array{<:Integer, 2})
-    ii = Int(ceil(rand() * size(rng)[1])) + first(rng).I[1] - 1
-    jj = Int(ceil(rand() * size(rng)[2])) + first(rng).I[2] - 1
-    countdelta, movetype = randomwalk1_countdelta(ii, jj, C, compsum, countDeltas)
-
-    #only accept double switches with p = 0.5 to make sampling uniform over moves
-    if movetype == 5
-        if rand() < 0.5
-            return randomwalk1_draw(rng, C, compsum, countDeltas)
-        end
+    if rand() < exp(loglik)
+        countsdelta = randomwalk1_countmargin(row, col, C, compsum, countMargin)
+        C = randomwalk1_move!(row, col, C)
+        return C, countsdelta, true
+    else
+        return C, zeros(A, size(countMargin, 1)), false
     end
-
-    moveratio = randomwalk1_movetype2ratio(movetype, C)
-    return randomwalk1_move(ii, jj, C), countdelta, moveratio
-end
-
-#efficent compute ratio of likelihoods
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                      countDeltas::Array{<:Integer, 2}, logDiff::Array{<:AbstractFloat, 1},
-                      balance_function::Function = identity_balance)
-    moveweights = Array{Float64}(undef, C.nrow * C.ncol)
-    for jj in 1:C.ncol, ii in 1:C.nrow
-        #idx = sub2ind((C.nrow, C.ncol), ii, jj)
-        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
-        countdelta, movetype = randomwalk1_countdelta(ii, jj, C, compsum, countDeltas)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 5
-            moveweights[idx] = 0.5 * balance_function(countdelta, logDiff)
-        else
-            moveweights[idx] = balance_function(countdelta, logDiff)
-        end
-    end
-    return moveweights
-end
-
-function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                      countDeltas::Array{<:Integer, 2}, logDiff::Array{<:AbstractFloat, 1},
-                      logpdfC::Function, ratioPrior::Bool,
-                      balance_function::Function = identity_balance)
-    moveweights = Array{Float64}(undef, C.nrow * C.ncol)
-    for jj in 1:C.ncol, ii in 1:C.nrow
-        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
-        propC = randomwalk1_move(ii, jj, C)
-        countdelta, movetype = randomwalk1_countdelta(ii, jj, C, compsum, countDeltas)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 5
-            moveweights[idx] = 0.5 * balance_function(countdelta, logDiff, propC, C, logpdfC, ratioPrior)
-        else
-            moveweights[idx] = balance_function(countdelta, logDiff, propC, C, logpdfC, ratioPrior)
-        end
-    end
-    return moveweights
-end
-
-function move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                      loglikMargin::Array{<:AbstractFloat, 1},
-                      logpdfC::Function, balance_function::Function = identity_balance)
-    moveweights = Array{Float64}(undef, C.nrow * C.ncol)
-    for jj in 1:C.ncol, ii in 1:C.nrow
-        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
-        loglikdelta, movetype = randomwalk1_loglikdelta(ii, jj, C, compsum, loglikMargin)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 1
-            moveweights[idx] = balance_function(loglikdelta, 1, C, logpdfC)
-        elseif movetype == 4
-            moveweights[idx] = balance_function(loglikdelta, -1, C, logpdfC)
-        elseif movetype == 5
-            moveweights[idx] = 0.5 * balance_function(loglikdelta, 0, C, logpdfC)
-        else
-            moveweights[idx] = balance_function(loglikdelta, 0, C, logpdfC)
-        end
-    end
-    return moveweights
 end
 
 """
-    f(x::Type)
 
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
 """
-function log_move_weights(C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                          loglikMargin::Array{<:AbstractFloat, 1},
-                          logpdfC::Function, log_balance_function::Function = lidentity_balance)
-    lmoveweights = Array{Float64}(undef, C.nrow * C.ncol)
-    for jj in 1:C.ncol, ii in 1:C.nrow
-        idx = LinearIndices((C.nrow, C.ncol))[ii, jj]
-        loglikdelta, movetype = randomwalk1_loglikdelta(ii, jj, C, compsum, loglikMargin)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 1
-            lmoveweights[idx] = log_balance_function(loglikdelta, 1, C, logpdfC)
-        elseif movetype == 4
-            lmoveweights[idx] = log_balance_function(loglikdelta, -1, C, logpdfC)
-        elseif movetype == 5
-            lmoveweights[idx] = loghalf + log_balance_function(loglikdelta, 0, C, logpdfC)
-        else
-            lmoveweights[idx] = log_balance_function(loglikdelta, 0, C, logpdfC)
-        end
-    end
-    return lmoveweights
-end
-
-function move_weights(rng::CartesianIndices{2},
-                      C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                      countDeltas::Array{<:Integer, 2}, logDiff::Array{<:AbstractFloat, 1},
-                      balance_function::Function = identity_balance)
-    startrow = first(rng).I[1] - 1
-    startcol = first(rng).I[2] - 1
-    moveweights = Array{Float64}(undef, length(rng))
-    for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        #idx = sub2ind(size(rng), ii, jj)
-        idx = LinearIndices(size(rng))[ii, jj]
-        countdelta, movetype = randomwalk1_countdelta(startrow + ii,
-                                                      startcol + jj,
-                                                      C, compsum, countDeltas)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 5
-            moveweights[idx] = 0.5 * balance_function(countdelta, logDiff)
-        else
-            moveweights[idx] = balance_function(countdelta, logDiff)
-        end
-    end
-    return moveweights
-end
-
-function move_weights(rng::CartesianIndices{2},
-                      C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                      countDeltas::Array{<:Integer, 2}, logDiff::Array{<:AbstractFloat, 1},
-                      logpdfC::Function, ratioPrior::Bool,
-                      balance_function::Function = identity_balance)
-    startrow = first(rng).I[1] - 1
-    startcol = first(rng).I[2] - 1
-    moveweights = Array{Float64}(undef, length(rng))
-    for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        idx = LinearIndices(size(rng))[ii, jj]
-        propC = randomwalk1_move(ii, jj, C)
-        countdelta, movetype = randomwalk1_countdelta(startrow + ii,
-                                                      startcol + jj,
-                                                      C, compsum, countDeltas)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 5
-            moveweights[idx] = 0.5 * balance_function(countdelta, logDiff, propC, C, logpdfC, ratioPrior)
-        else
-            moveweights[idx] = balance_function(countdelta, logDiff, propC, C, logpdfC, ratioPrior)
-        end
-    end
-    return moveweights
-end
-
-function move_weights(rng::CartesianIndices{2},
-                      C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                      loglikMargin::Array{<:AbstractFloat, 1},
-                      logpdfC::Function, balance_function::Function = identity_balance)
-
-    startrow = first(rng).I[1] - 1
-    startcol = first(rng).I[2] - 1
-    moveweights = Array{Float64}(undef, length(rng))
-    for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        idx = LinearIndices(size(rng))[ii, jj]
-        loglikdelta, movetype = randomwalk1_loglikdelta(startrow + ii, startcol + jj, C, compsum, loglikMargin)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 1
-            moveweights[idx] = balance_function(loglikdelta, 1, C, logpdfC)
-        elseif movetype == 4
-            moveweights[idx] = balance_function(loglikdelta, -1, C, logpdfC)
-        elseif movetype == 5
-            moveweights[idx] = 0.5 * log_balance_function(loglikdelta, 0, C, logpdfC)
-        else
-            moveweights[idx] = balance_function(loglikdelta, 0, C, logpdfC)
-        end
-    end
-    return moveweights
-end
-
-function log_move_weights(rng::CartesianIndices{2},
+function log_move_weights(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
                           C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                          loglikMargin::Array{<:AbstractFloat, 1},
-                          logpdfC::Function, log_balance_function::Function = lidentity_balance)
+                          logpCRatioAdd::T, logpCRatioRemove::T,
+                          loglikMargin::Array{T, 1},
+                          log_balance_function::Function = lidentity_balance,
+                          loglikMissing::T = -Inf) where T <: AbstractFloat
     
-    startrow = first(rng).I[1] - 1
-    startcol = first(rng).I[2] - 1
-    lmoveweights = Array{Float64}(undef, length(rng))
-    for jj in 1:size(rng)[2], ii in 1:size(rng)[1]
-        idx = LinearIndices(size(rng))[ii, jj]
-        loglikdelta, movetype = randomwalk1_loglikdelta(startrow + ii, startcol + jj, C, compsum, loglikMargin)
-        
-        ##down weight double switches since two of them arrive at the same result
-        if movetype == 1
-            lmoveweights[idx] = log_balance_function(loglikdelta, 1, C, logpdfC)
-        elseif movetype == 4
-            lmoveweights[idx] = log_balance_function(loglikdelta, -1, C, logpdfC)
-        elseif movetype == 5
-            lmoveweights[idx] = loghalf + log_balance_function(loglikdelta, 0, C, logpdfC)
+    lmoveweights = zeros(T, length(cols) * length(rows))
+    idx = 1
+    for jj in 1:length(cols), ii in 1:length(rows)
+        lp, doubleswitch = randomwalk1_loglikpCratio(rows[ii], cols[jj], C, compsum, logpCRatioAdd, logpCRatioRemove, loglikMargin, loglikMissing)
+        if doubleswitch
+            lmoveweights[idx] = log_balance_function(lp) + loghalf
         else
-            lmoveweights[idx] = log_balance_function(loglikdelta, 0, C, logpdfC)
+            lmoveweights[idx] = log_balance_function(lp)
+        end
+        idx += 1
+    end
+    lsummw = logsumexp(lmoveweights)
+    return lmoveweights, lsummw
+end
+
+function log_move_weights_sparse(cols::Array{<:Integer, 1}, nzobs::Integer,
+                                 C::LinkMatrix, compsum::SparseComparisonSummary,
+                                 logpCRatioAdd::T, logpCRatioRemove::T,
+                                 loglikMargin::Array{T, 1},
+                                 log_balance_function::Function = lidentity_balance,
+                                 loglikMissing::T = -Inf) where T <: AbstractFloat
+    
+    rows = rowvals(compsum.obsidx)
+
+    obsrows = zeros(eltype(rows), nzobs)
+    obscols = zeros(eltype(cols), nzobs)
+    lmoveweights = zeros(T, nzobs)
+    idx = 1
+    for col in cols
+        for ii in nzrange(compsum.obsidx, col)
+            obsrows[idx] = rows[ii]
+            obscols[idx] = col
+            lp, doubleswitch = randomwalk1_loglikpCratio(rows[ii], cols[jj], C, compsum, logpCRatioAdd, logpCRatioRemove, loglikMargin, loglikMissing)
+            if doubleswitch
+                lmoveweights[idx] = log_balance_function(lp) + loghalf
+            else
+                lmoveweights[idx] = log_balance_function(lp)
+            end
+            idx += 1
         end
     end
-    return lmoveweights
+    lsummw = logsumexp(lmoveweights)
+    return obsrows, obscols, lmoveweights, lsummw
 end
+
+
 
 """
     f(x::Type)
@@ -804,327 +406,78 @@ end
 
 ```
 """
-function locally_balanced_draw(C::LinkMatrix,
-                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                               countDeltas::Array{<:Integer, 2},
-                               logDiff::Array{<:AbstractFloat, 1},
-                               balance_function::Function)
+function locally_balanced_draw!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
+                                C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                loglikMargin::Array{T, 1},
+                                countMargin::Array{G, 2},
+                                logpdfC::Union{Function, Array{T, 1}}, 
+                                log_balance_function::Function = lidentity_balance,
+                                loglikMissing = -T(Inf)) where {G <: Integer, T <: AbstractFloat}
+
     ##Move weights
-    moveweights = move_weights(C, compsum, countDeltas, logDiff, balance_function)
+    logpCRatioAdd = logpCRatios_add(C, logpdfC)
+    logpCRatioRemove = logpCRatios_remove(C, logpdfC)  
+    lmoveweights, lsummw = log_move_weights(rows, cols, C, compsum, logpCRatioAdd, logpCRatioRemove, loglikMargin, log_balance_function, loglikMissing)
     
+    #randomwalk1_loglikpCratio(rows[ii], cols[jj], C, compsum, logpCRatioAdd, logpCRatioRemove, loglikMargin, loglikMissing)
     ##Sample move
-    idx = sample(Weights(vec(moveweights)))
-    #moverow, movecol = ind2sub((compsum.nrow, compsum.ncol), idx)
-    moverow, movecol = ind2sub((compsum.nrow, compsum.ncol), idx)
-    countdelta, movetype = randomwalk1_countdelta(moverow, movecol, C, compsum, countDeltas)
-    propC = randomwalk1_move(moverow, movecol, C)
+    moverow, movecol, lmove = sample_proposal_full(rows, cols, lmoveweights, lsummw)
+    invrow, invcol = randomwalk1_inverse(moverow, movecol, C)
+    loglikpCratio, doubleswitch = randomwalk1_loglikpCratio(moverow, movecol, C, compsum, logpCRatioAdd, logpCRatioRemove, loglikMargin, loglikMissing)
 
-    ##Proposal weights and reverse move
-    propweights = move_weights(propC, compsum, countDeltas, logDiff, balance_function)
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revidx = sub2ind((compsum.nrow, compsum.ncol), revrow, revcol)
-    
-    ##Compute ratio
-    moveratio = (propweights[revidx] / moveweights[idx]) * (sum(moveweights) / sum(propweights))
-    
-    return propC, countdelta, moveratio
-end
-
-function locally_balanced_draw(C::LinkMatrix,
-                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                               countDeltas::Array{<:Integer, 2},
-                               logDiff::Array{<:AbstractFloat, 1},
-                               logpdfC::Function, ratioPrior::Bool,
-                               balance_function::Function)
-    ##Move weights
-    moveweights = move_weights(C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, balance_function)
-    
-    ##Sample move
-    idx = sample(Weights(vec(moveweights)))
-    moverow, movecol = ind2sub((compsum.nrow, compsum.ncol), idx)
-    countdelta, movetype = randomwalk1_countdelta(moverow, movecol, C, compsum, countDeltas)
-    propC = randomwalk1_move(moverow, movecol, C)
-
-    ##Proposal weights and reverse move
-    propweights = move_weights(propC, compsum, countDeltas, logDiff, logpdfC, ratioPrior, balance_function)
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revidx = sub2ind((compsum.nrow, compsum.ncol), revrow, revcol)
-    
-    ##Compute ratio
-    moveratio = (propweights[revidx] / moveweights[idx]) * (sum(moveweights) / sum(propweights))
-    
-    return propC, countdelta, moveratio
-end
-
-function locally_balanced_draw(C::LinkMatrix,
-                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                               loglikMargin::Array{<:AbstractFloat, 1},
-                               countDeltas::Array{<:Integer, 2},
-                               logpdfC::Function, 
-                               log_balance_function::Function)
-    ##Move weights
-    lmoveweights = log_move_weights(C, compsum, loglikMargin, logpdfC, log_balance_function)
-    lsummw = logsumexp(lmoveweights)
-    
-    ##Sample move
-    idx = sample(Weights(exp.(lmoveweights .- lsummw)))
-    moverow, movecol = ind2sub((compsum.nrow, compsum.ncol), idx)
-    loglikdelta, countdelta, movetype = randomwalk1_loglikcountdelta(moverow, movecol, C, compsum, loglikMargin, countDeltas)
-    propC = randomwalk1_move(moverow, movecol, C)
-    
-    ##Proposal weights and reverse move
-    lpropweights = log_move_weights(propC, compsum, loglikMargin, logpdfC, log_balance_function)
-    lsumpw = logsumexp(lpropweights)
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revidx = sub2ind((compsum.nrow, compsum.ncol), revrow, revcol)
-    
-    ##Compute ratio
-    moveratio = exp(lpropweights[revidx] - lmoveweights[idx] + lsummw - lsumpw)
-
-    #also return change in likelihood
-    return propC, loglikdelta, countdelta,  moveratio
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function locally_balanced_draw!(C::LinkMatrix,
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                loglikMargin::Array{<:AbstractFloat, 1},
-                                countDeltas::Array{<:Integer, 2},
-                                logpdfC::Function, 
-                                log_balance_function::Function)
-    ##Move weights
-    lmoveweights = log_move_weights(C, compsum, loglikMargin, logpdfC, log_balance_function)
-    lsummw = logsumexp(lmoveweights)
-    
-    ##Sample move
-    idx = sample(Weights(exp.(lmoveweights .- lsummw)))
-    moverow, movecol = ind2sub((compsum.nrow, compsum.ncol), idx)
-    loglikdelta, countdelta, movetype = randomwalk1_loglikcountdelta(moverow, movecol, C, compsum, loglikMargin, countDeltas)
-
-    #Compute change in prior
-    if movetype == 1
-        lpriorratio = logpdfC(1, C)
-        #lmoveweights[idx] = log_balance_function(loglikdelta, 1, C, logpdfC)
-    elseif movetype == 4
-        lpriorratio = logpdfC(-1, C)
-    else
-        lpriorratio = logpdfC(0, C)
+    #check that empty move has not been sampled
+    if iszero(compsum.obsidx[moverow, movecol])
+        @warn "Missing record pair linked ($moverow, $movecol), debugging needed..."
     end
-
+    
     #Assume move to compute reverse weights
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revidx = sub2ind((compsum.nrow, compsum.ncol), revrow, revcol)
     randomwalk1_move!(moverow, movecol, C)
+    loginvpCRatioAdd = logpCRatios_add(C, logpdfC)
+    loginvpCRatioRemove = logpCRatios_remove(C, logpdfC)
+
+    #rowcheck, colcheck = randomwalk1_inverse(invrow, invcol, C)
+    #if rowcheck != moverow || colcheck != movecol
+    #    @error "check inverse move function"
+    #    println("($moverow, $movecol)")
+    #    println("($invrow, $invcol)")
+    #    println("($rowcheck, $colcheck)")
+    #    println("$(C.row2col)")
+    #    println("$doubleswitch")
+    #end
     
     ##Proposal weights and reverse move
-    lpropweights = log_move_weights(C, compsum, loglikMargin, logpdfC, log_balance_function)
-    lsumpw = logsumexp(lpropweights)
-    
-    ##Compute ratio
-    lmoveratio = lpropweights[revidx] - lmoveweights[idx] + lsummw - lsumpw
+    linverseweights, lsuminvw = log_move_weights(rows, cols, C, compsum, loginvpCRatioAdd, loginvpCRatioRemove, loglikMargin, log_balance_function, loglikMissing)
 
-    #also return change in likelihood
-    if rand() < exp(loglikdelta + lpriorratio + lmoveratio)
-        #return C, countdelta, true
-        return countdelta, true
+    if doubleswitch
+        linvmove = log_balance_function(-loglikpCratio) + loghalf
     else
-        randomwalk1_move!(revrow, revcol, C)
-        return countdelta, false
+        linvmove = log_balance_function(-loglikpCratio)
     end
-end
-
-function locally_balanced_draw(rng::CartesianIndices{2},
-                               C::LinkMatrix,
-                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                               countDeltas::Array{<:Integer, 2},
-                               logDiff::Array{<:AbstractFloat, 1},
-                               balance_function::Function)
-    ##Move weights
-    moveweights = move_weights(rng, C, compsum, countDeltas, logDiff, balance_function)
-    
-    ##Sample move
-    idx = sample(Weights(vec(moveweights)))
-    moverow, movecol = ind2sub(size(rng), idx)
-    moverow += first(rng).I[1] - 1
-    movecol += first(rng).I[2] - 1
-    countdelta, movetype = randomwalk1_countdelta(moverow, movecol, C, compsum, countDeltas)
-    propC = randomwalk1_move(moverow, movecol, C)
-
-    ##Proposal weights and reverse move
-    propweights = move_weights(rng, propC, compsum, countDeltas, logDiff, balance_function)
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revrow -= first(rng).I[1] - 1
-    revcol -= first(rng).I[2] - 1
-    revidx = sub2ind(size(rng), revrow, revcol)
     
     ##Compute ratio
-    moveratio = (propweights[revidx] / moveweights[idx]) * (sum(moveweights) / sum(propweights))
-    
-    return propC, countdelta, moveratio
-end
-
-function locally_balanced_draw(rng::CartesianIndices{2},
-                               C::LinkMatrix,
-                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                               loglikMargin::Array{<:AbstractFloat, 1},
-                               countDeltas::Array{<:Integer, 2},
-                               logpdfC::Function, 
-                               log_balance_function::Function)
-    ##Move weights
-    lmoveweights = log_move_weights(C, compsum, loglikMargin, logpdfC, log_balance_function)
-    lsummw = logsumexp(lmoveweights)
-    
-    ##Sample move
-    idx = sample(Weights(exp.(moveweights .- lsummw)))
-    moverow, movecol = ind2sub(size(rng), idx)
-    moverow += first(rng).I[1] - 1
-    movecol += first(rng).I[2] - 1
-    loglikdelta, countdelta, movetype = randomwalk1_loglikcountdelta(moverow, movecol, C, compsum, loglikMargin, countDeltas)
-    
-    propC = randomwalk1_move(moverow, movecol, C)
-    
-    ##Proposal weights and reverse move
-    lpropweights = log_move_weights(rng, propC, compsum, loglikMargin, logpdfC, log_balance_function)
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revrow -= first(rng).I[1] - 1
-    revcol -= first(rng).I[2] - 1
-    revidx = sub2ind(size(rng), revrow, revcol)
-    
-    ##Compute ratio
-    moveratio = exp(lpropweights[revidx] - lmoveweights[idx] + lsummw - lsumpw)
+    lmoveratio = linvmove - lmove + lsummw - lsuminvw
 
     #also return change in likelihood
-    return propC, loglikdelta, countdelta,  moveratio
-end
-
-function locally_balanced_draw(rng::CartesianIndices{2},
-                               C::LinkMatrix,
-                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                               countDeltas::Array{<:Integer, 2},
-                               logDiff::Array{<:AbstractFloat, 1},
-                               logpdfC::Function, ratioPrior::Bool,
-                               balance_function::Function)
-    ##Move weights
-    moveweights = move_weights(rng, C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, balance_function)
-    
-    ##Sample move
-    idx = sample(Weights(vec(moveweights)))
-    moverow, movecol = ind2sub(size(rng), idx)
-    moverow += first(rng).I[1] - 1
-    movecol += first(rng).I[2] - 1
-    countdelta, movetype = randomwalk1_countdelta(moverow, movecol, C, compsum, countDeltas)
-    propC = randomwalk1_move(moverow, movecol, C)
-
-    ##Proposal weights and reverse move
-    propweights = move_weights(rng, propC, compsum, countDeltas, logDiff, logpdfC, ratioPrior, balance_function)
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revrow -= first(rng).I[1] - 1
-    revcol -= first(rng).I[2] - 1
-    revidx = sub2ind(size(rng), revrow, revcol)
-    
-    ##Compute ratio
-    moveratio = (propweights[revidx] / moveweights[idx]) * (sum(moveweights) / sum(propweights))
-    
-    return propC, countdelta, moveratio
-end
-
-function locally_balanced_draw!(rng::CartesianIndices{2},
-                                C::LinkMatrix,
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                loglikMargin::Array{<:AbstractFloat, 1},
-                                countDeltas::Array{<:Integer, 2},
-                                logpdfC::Function, 
-                                log_balance_function::Function)
-    ##Move weights
-    lmoveweights = log_move_weights(rng, C, compsum, loglikMargin, logpdfC, log_balance_function)
-    lsummw = logsumexp(lmoveweights)
-    
-    ##Sample move
-    idx = sample(Weights(exp.(lmoveweights .- lsummw)))
-    moverow, movecol = ind2sub(size(rng), idx)
-    moverow += first(rng).I[1] - 1
-    movecol += first(rng).I[2] - 1
-    loglikdelta, countdelta, movetype = randomwalk1_loglikcountdelta(moverow, movecol, C, compsum, loglikMargin, countDeltas)
-
-    #Compute change in prior
-    if movetype == 1
-        lpriorratio = logpdfC(1, C)
-        #lmoveweights[idx] = log_balance_function(loglikdelta, 1, C, logpdfC)
-    elseif movetype == 4
-        lpriorratio = logpdfC(-1, C)
+    if rand() < exp(loglikpCratio + lmoveratio)
+        countmargin = -randomwalk1_countmargin(invrow, invcol, C, compsum, countMargin)
+        return C, countmargin, true
     else
-        lpriorratio = logpdfC(0, C)
-    end
-
-    #Assume move to compute reverse weights
-    revrow, revcol = randomwalk1_reversemove(moverow, movecol, movetype, C)
-    revidx = sub2ind(size(rng), revrow - first(rng).I[1] + 1, revcol - first(rng).I[2] + 1)
-    randomwalk1_move!(moverow, movecol, C)
-    
-    ##Proposal weights and reverse move
-    lpropweights = log_move_weights(rng, C, compsum, loglikMargin, logpdfC, log_balance_function)
-    lsumpw = logsumexp(lpropweights)
-
-    ##Compute ratio
-    lmoveratio = (lpropweights[revidx] - lmoveweights[idx] + lsummw - lsumpw)
-    
-    #also return change in likelihood
-    if rand() < exp(loglikdelta + lpriorratio + lmoveratio)
-        #return C, countdelta, true
-        return countdelta, true
-    else
-        randomwalk1_move!(revrow, revcol, C)
-        #return C, countdelta, false
-        return countdelta, false
+        randomwalk1_move!(invrow, invcol, C)
+        countmargin = zeros(G, size(countMargin, 1))
+        return C, countmargin, false
     end
 end
 
 """
-    f(x::Type)
 
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
 """
-function globally_balanced_draw(C::LinkMatrix,
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                countDeltas::Array{<:Integer, 2},
-                                logDiff::Array{<:AbstractFloat, 1})
-    return locally_balanced_draw(C, compsum, countDeltas, logDiff, identity_balance)
-end
-
-function globally_balanced_draw(C::LinkMatrix,
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                countDeltas::Array{<:Integer, 2},
-                                logDiff::Array{<:AbstractFloat, 1},
-                                logpdfC::Function, ratioPrior::Bool)
-    return locally_balanced_draw(C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, identity_balance)
+function globally_balanced_draw!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
+                                 C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                 loglikMargin::Array{T, 1},
+                                 countMargin::Array{G, 2},
+                                 logpdfC::Union{Function, Array{T, 1}},
+                                 loglikMissing = -T(Inf)) where {G <: Integer, T <: AbstractFloat}
+    return locally_balanced_draw!(rows, cols, C, compsum, loglikMargin, countMargin, logpdfC, lidentity_balance, loglikMissing)
 end
 
 """
@@ -1144,38 +497,13 @@ end
 
 ```
 """
-function globally_balanced_draw!(C::LinkMatrix,
-                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                 loglikMargin::Array{<:AbstractFloat, 1},
-                                 countDeltas::Array{<:Integer, 2},
-                                 logpdfC::Function)
-    return locally_balanced_draw!(C, compsum, loglikMargin, countDeltas, logpdfC, lidentity_balance)
-end
-
-function globally_balanced_draw(rng::CartesianIndices{2},
-                                C::LinkMatrix,
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                countDeltas::Array{<:Integer, 2},
-                                logDiff::Array{<:AbstractFloat, 1})
-    return locally_balanced_draw(rng, C, compsum, countDeltas, logDiff, identity_balance)
-end
-
-function globally_balanced_draw(rng::CartesianIndices{2},
-                                C::LinkMatrix,
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                countDeltas::Array{<:Integer, 2},
-                                logDiff::Array{<:AbstractFloat, 1},
-                                logpdfC::Function, ratioPrior::Bool)
-    return locally_balanced_draw(rng, C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, identity_balance)
-end
-
-function globally_balanced_draw!(rng::CartesianIndices{2},
-                                 C::LinkMatrix,
-                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                 loglikMargin::Array{<:AbstractFloat, 1},
-                                 countDeltas::Array{<:Integer, 2},
-                                 logpdfC::Function)
-    return locally_balanced_draw!(rng, C, compsum, loglikMargin, countDeltas, logpdfC, lidentity_balance)
+function locally_balanced_sqrt_draw!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
+                                 C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                 loglikMargin::Array{T, 1},
+                                 countMargin::Array{G, 2},
+                                 logpdfC::Union{Function, Array{T, 1}},
+                                 loglikMissing = -T(Inf)) where {G <: Integer, T <: AbstractFloat}
+    return locally_balanced_draw!(rows, cols, C, compsum, loglikMargin, countMargin, logpdfC, lsqrt_balance, loglikMissing)
 end
 
 """
@@ -1195,136 +523,13 @@ end
 
 ```
 """
-function locally_balanced_sqrt_draw(C::LinkMatrix,
-                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                    countDeltas::Array{<:Integer, 2},
-                                    logDiff::Array{<:AbstractFloat, 1})
-    return locally_balanced_draw(C, compsum, countDeltas, logDiff, sqrt_balance)
-end
-
-function locally_balanced_sqrt_draw(C::LinkMatrix,
-                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                    countDeltas::Array{<:Integer, 2},
-                                    logDiff::Array{<:AbstractFloat, 1},
-                                    logpdfC::Function, ratioPrior::Bool)
-    return locally_balanced_draw(C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, sqrt_balance)
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function locally_balanced_sqrt_draw!(C::LinkMatrix,
-                                     compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                     loglikMargin::Array{<:AbstractFloat, 1},
-                                     countDeltas::Array{<:Integer, 2},
-                                     logpdfC::Function)
-    return locally_balanced_draw!(C, compsum, loglikMargin, countDeltas, logpdfC, lsqrt_balance)
-end
-
-function locally_balanced_sqrt_draw(rng::CartesianIndices{2},
-                                    C::LinkMatrix,
-                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                    countDeltas::Array{<:Integer, 2},
-                                    logDiff::Array{<:AbstractFloat, 1})
-    return locally_balanced_draw(rng, C, compsum, countDeltas, logDiff, sqrt_balance)
-end
-
-function locally_balanced_sqrt_draw(rng::CartesianIndices{2},
-                                    C::LinkMatrix,
-                                    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                    countDeltas::Array{<:Integer, 2},
-                                    logDiff::Array{<:AbstractFloat, 1},
-                                    logpdfC::Function, ratioPrior::Bool)
-    return locally_balanced_draw(rng, C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, sqrt_balance)
-end
-
-function locally_balanced_sqrt_draw!(rng::CartesianIndices{2},
-                                     C::LinkMatrix,
-                                     compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                     loglikMargin::Array{<:AbstractFloat, 1},
-                                     countDeltas::Array{<:Integer, 2},
-                                     logpdfC::Function)
-    return locally_balanced_draw!(rng, C, compsum, loglikMargin, countDeltas, logpdfC, lsqrt_balance)
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function locally_balanced_barker_draw(C::LinkMatrix,
-                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                      countDeltas::Array{<:Integer, 2},
-                                      logDiff::Array{<:AbstractFloat, 1})
-    return locally_balanced_draw(C, compsum, countDeltas, logDiff, barker_balance)
-end
-
-function locally_balanced_barker_draw(C::LinkMatrix,
-                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                      countDeltas::Array{<:Integer, 2},
-                                      logDiff::Array{<:AbstractFloat, 1},
-                                      logpdfC::Function, ratioPrior::Bool)
-    return locally_balanced_draw(C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, barker_balance)
-end
-
-function locally_balanced_barker_draw!(C::LinkMatrix,
-                                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                       loglikMargin::Array{<:AbstractFloat, 1},
-                                       countDeltas::Array{<:Integer, 2},
-                                       logpdfC::Function)
-    return locally_balanced_draw!(C, compsum, loglikMargin, countDeltas, logpdfC, lbarker_balance)
-end
-
-function locally_balanced_barker_draw(rng::CartesianIndices{2},
-                                      C::LinkMatrix,
-                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                      countDeltas::Array{<:Integer, 2},
-                                      logDiff::Array{<:AbstractFloat, 1})
-    return locally_balanced_draw(rng, C, compsum, countDeltas, logDiff, barker_balance)
-end
-
-function locally_balanced_barker_draw(rng::CartesianIndices{2},
-                                      C::LinkMatrix,
-                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                      countDeltas::Array{<:Integer, 2},
-                                      logDiff::Array{<:AbstractFloat, 1},
-                                      logpdfC::Function, ratioPrior::Bool)
-    return locally_balanced_draw(rng, C, compsum, countDeltas, logDiff, logpdfC, ratioPrior, barker_balance)
-end
-
-function locally_balanced_barker_draw!(rng::CartesianIndices{2},
-                                       C::LinkMatrix,
-                                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                       loglikMargin::Array{<:AbstractFloat, 1},
-                                       countDeltas::Array{<:Integer, 2},
-                                       logpdfC::Function)
-    return locally_balanced_draw!(rng, C, compsum, loglikMargin, countDeltas, logpdfC, lbarker_balance)
+function locally_balanced_barker_draw!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
+                                       C::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                       loglikMargin::Array{T, 1},
+                                       countMargin::Array{G, 2},
+                                       logpdfC::Union{Function, Array{T, 1}},
+                                       loglikMissing = -T(Inf)) where {G <: Integer, T <: AbstractFloat}
+    return locally_balanced_draw!(rows, cols, C, compsum, loglikMargin, countMargin, logpdfC, lbarker_balance, loglikMissing)
 end
 
 """
@@ -1349,168 +554,141 @@ function randomwalk2_move!(row::T, col::T, C::LinkMatrix{T}) where T <: Integer
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
             add_link!(row, col, C)
-            return C
         else
-            warn("incorrect draw for randomwalk 2")
-            return C
+            @warn "incorrect draw for randomwalk 2"
         end
     else
         if iszero(C.col2row[col]) ##switch move
-            remove_link!(row, C.row2col[row], C)
-            add_link!(row, col, C)
-            #C.col2row[C.row2col[row]] = zero(T)
-            #C.col2row[col] = row
-            #C.row2col[row] = col
-            #dropzeros!(C.col2row)
-            return C
+            colswitch_link!(row, col, C)
         elseif C.col2row[col] == row ##delete move
             remove_link!(row, col, C)
-            #C.row2col[row] = zero(T)
-            #C.col2row[col] = zero(T)
-            #C.nlink -= 1
-            return C
         else ##double switch move
-            warn("incorrect draw for randomwalk 2 (double switch)")
-            return C
+            @warn "incorrect draw for randomwalk 2 (double switch)"
         end
+    end
+    
+    return C
+end
+
+function randomwalk2_inverse(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
+    if iszero(C.row2col[row])
+        if iszero(C.col2row[col])
+            return row, col
+        else
+            @warn "incorrect draw for randomwalk 2"
+        end
+    elseif iszero(C.col2row[col]) #row not zero, col zero
+        return  row, C.row2col[row]
+    elseif C.row2col[row] == col
+        return row, col
+    else
+        @warn "incorrect draw for randomwalk 2 (double switch)"
     end
 end
 
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-randomwalk2_move(row::T, col::T, C::LinkMatrix{T}) where T <: Integer = randomwalk2_move!(row, col, deepcopy(C))
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function randomwalk2_countdelta(row::T, col::T,
-                                C::LinkMatrix{T},
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                countDeltas::Array{<:Integer, 2}) where T <: Integer
-    countdelta = zeros(eltype(countDeltas), size(countDeltas, 1))
+function randomwalk2_loglikpCratio(row::T, col::T, C::LinkMatrix{T}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, logpCRatioAdd::T, logpCRatioRemove::T, loglikMargin::Array{T, 1}, loglikMissing::T = -Inf) where T <: Integer
     if iszero(C.row2col[row])
         if iszero(C.col2row[col]) ##add move
-            countdelta = get_counts(row, col, compsum, countDeltas)
-            return countdelta, 1
+            return loglik_add(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatioAdd, false
         else ##single switch move I
-            warn("incorrect draw for randomwalk 2")
-            return countdelta, 0
+            @warn "incorrect draw for randomwalk 2"
         end
     else
         if iszero(C.col2row[col]) ##single switch move II
-            countdelta = get_counts(row, col, compsum, countDeltas) - get_counts(row, C.row2col[row], compsum, countDeltas)
-            return countdelta, 3
+            return loglik_colswitch(row, col, C, compsum, loglikMargin, loglikMissing), false
         elseif C.col2row[col] == row ##delete move
-            countdelta = -get_counts(row, col, compsum, countDeltas)
-            return countdelta, 2
+            return loglik_remove(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatioRemove, false
+        else ##double switch move
+            @warn "incorrect draw for randomwalk 2"
+        end
+    end
+end
+
+
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
+function randomwalk2_countmargin(row::T, col::T,
+                                 C::LinkMatrix{T},
+                                 compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                 countMargin::Array{G, 2}) where {T <: Integer, G <: Integer}
+    if iszero(C.row2col[row])
+        if iszero(C.col2row[col]) ##add move
+            return get_counts(row, col, compsum, countMargin)
+        else ##single switch move I
+            warn("incorrect draw for randomwalk 2")
+            return countmargin
+        end
+    else
+        if iszero(C.col2row[col]) ##single switch move II
+            return get_counts(row, col, compsum, countMargin) - get_counts(row, C.row2col[row], compsum, countMargin)
+        elseif C.col2row[col] == row ##delete move
+            return -get_counts(row, col, compsum, countMargin)
         else ##double switch move
             warn("incorrect draw for randomwalk 2 (double switch)")
-            return countdelta, 0
+            return zeros(G, size(countMargin, 1))
         end
     end
 end
 
-function randomwalk2_draw(C::LinkMatrix,
-                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                          countDeltas::Array{<:Integer, 2},
-                          p::AbstractFloat = 0.5)
+function randomwalk2_update!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
+                             C::LinkMatrix,
+                             compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                             countMargin::Array{A, 2},
+                             loglikMargin::Array{T, 1},
+                             logpdfC::Union{Function, Array{T, 1}},
+                             p::AbstractFloat = 0.5,
+                             log_balance_function::Function = lidentity_balance,
+                             loglikMissing::T = -Inf) where {G <: Integer, T <: AbstractFloat, A <: Integer}
+
+    row = sample(rows)
+    opencols = cols[findall(iszero, C.col2row[cols])]
     
-    ii = Int(ceil(rand() * C.nrow))
-    if iszero(C.row2col[ii])
-        opencols = find(map(jj -> iszero(C.col2row[jj]), 1:C.ncol))
-        jj = sample(opencols)
-    elseif rand() < p
-        jj = C.row2col[ii]
-    else
-        opencols = find(map(jj -> iszero(C.col2row[jj]), 1:C.ncol))
-        if length(opencols) == 0
-            jj = C.row2col[ii]
-        else
-            jj = sample(push!(opencols))
+    if iszero(C.row2col[row]) #add move
+        if length(opencols) == 0 #this should only happen if ncol < nrow in which case a different kernel should be used
+            return randomwalk2_update!(rows, cols, C, compsum, countMargin, loklikMargin, logpdfC, p, log_balance_function, loglikMissing)
         end
+        col = sample(opencols)
+        loglik = loglik_add(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatios_add(C, logpdfC)
+        if length(opencols) == 1
+            #lmoveratio = zero(T)
+        else
+            loglik += log(p) + log(length(opencols))
+        end
+    elseif length(opencols) == 0
+        col = C.row2col[row]
+        loglik = loglik_remove(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatios_remove(C, logpdfC)
+        #lmoveratio = zero(T)
+    elseif rand() < p  #remove move
+        col = C.row2col[row]
+        loglik = loglik_remove(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatios_remove(C, logpdfC)
+        loglik += -log(length(opencols) + 1) - log(p)
+    else
+        col = sample(opencols)
+        loglik = loglik_colswitch(row, col, C, compsum, loglikMargin, loglikMissing)
+        #lmoveratio = zero(T)
     end
     
-    countdelta, movetype = randomwalk2_countdelta(ii, jj, C, compsum, countDeltas)
-    
-    ratio = 1.0
-    if movetype == 1 #check ratio P(new -> old) / P(old -> new)
-        ratio = p * (C.ncol - C.nlink)
-    elseif movetype == 2 #check ratio P(new -> old) / P(old -> new)
-        ratio = (p * (C.ncol - C.nlink + 1))^-1
-    end
-    #ratio = P(move back) / P(move) = #moves / #moves back
-    return randomwalk1_move(ii, jj, C), countdelta, ratio
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function singleton_gibbs(rng::CartesianIndices{2}, C::LinkMatrix,
-                         compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                         loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},
-                         logpdfC::Function)
-    countdelta = countDeltas[:, compsum.obsidx[first(rng)]]
-    loglikdelta = loglikMargin[compsum.obsidx[first(rng)]]
-    if iszero(C.row2col[first(rng).I[1]])
-        lpriorratio = logpdfC(1, C)
-        lp1 = loglikdelta + lpriorratio
-        if rand() <= logistic(lp1)
-            return add_link(first(rng).I..., C), countdelta, true
-        else
-            return deepcopy(C), zeros(countdelta), false
-        end
+    if rand() < exp(loglik)
+        countsdelta = randomwalk2_countmargin(row, col, C, compsum, countMargin)
+        C = randomwalk2_move!(row, col, C)
+        return C, countsdelta, true
     else
-        lpriorratio = -logpdfC(-1, C)
-        lp1 = loglikdelta + lpriorratio
-        if rand() < logistic(lp1)
-            return deepcopy(C), zeros(countdelta), false
-        else
-            propC = remove_link(first(rng).I..., C)
-            return propC, -countdelta, true
-        end
+        return C, zeros(A, size(countMargin, 1)), false
     end
 end
 
@@ -1531,31 +709,30 @@ end
 
 ```
 """
-function singleton_gibbs!(rng::CartesianIndices{2}, C::LinkMatrix,
+function singleton_gibbs!(row::Integer, col::Integer, C::LinkMatrix,
                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                          loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},
-                          logpdfC::Function)
-    countdelta = countDeltas[:, compsum.obsidx[first(rng)]]
-    loglikdelta = loglikMargin[compsum.obsidx[first(rng)]]
-    if iszero(C.row2col[first(rng)[1]])        
-        lpriorratio = logpdfC(1, C)
-        lp1 = loglikdelta + lpriorratio
-        if rand() <= logistic(lp1)
-            add_link!(first(rng).I..., C)
-            return countdelta, true
+                          countMargin::Array{G, 2}, loglikMargin::Array{T, 1},
+                          logpdfC::Function,
+                          loglikMissing::T = -T(Inf)) where {G <: Integer, T <: AbstractFloat}
+    #logaddexp
+    if iszero(C.row2col[row])
+        loglik = loglik_add(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatios_add(C, logpdfC)
+        if rand() < exp(loglik - logaddexp(loglik, 1.0))
+            countmargin = counts_add(row, col, C, compsum, countMargin)
+            add_link!(row, col, C)
         else
-            return countdelta, false
+            countmargin = zeros(G, size(countMargin, 1))
         end
     else
-        lpriorratio = -logpdfC(-1, C)
-        lp1 = loglikdelta + lpriorratio
-        if rand() < logistic(lp1)
-            return countdelta, false
+        loglik = loglik_remove(row, col, C, compsum, loglikMargin, loglikMissing) + logpCRatios_remove(C, logpdfC)
+        if  exp(loglik - logaddexp(loglik, 1.0))
+            countmargin = counts_remove(row, col, C, compsum, countMargin)
+            remove_link!(row, col, C)
         else
-            remove_link!(first(rng).I..., C)
-            return -countdelta, true
+            countmargin = zeros(G, size(countMargin, 1))
         end
     end
+    return C, countmargin, true
 end
 
 """
@@ -1577,7 +754,7 @@ end
 """
 function singlerow_gibbs(row::Integer, cols::Array{<:Integer}, C::LinkMatrix,
                          compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                         loglikMargin::Array{<:AbstractFloat, 1}, countDeltas::Array{<:Integer, 2},
+                         loglikMargin::Array{<:AbstractFloat, 1}, countMargin::Array{<:Integer, 2},
                          logpdfC::Function)
     if iszero(C.row2col[row])
         lpriorratio0 = logpdfC(0, C)
@@ -1594,7 +771,7 @@ function singlerow_gibbs(row::Integer, cols::Array{<:Integer}, C::LinkMatrix,
     idx = searchsortedfirst(rand(), cumsum(softmax!(loglikes)))
     if idx == 1
         if iszero(C.row2col[row])
-            return zeros(eltype(countDeltas), size(countDeltas, 1)), false
+            return zeros(eltype(countMargin), size(countMargin, 1)), false
         else
             remove_link!(row, C.row2col[row], C)
         end
@@ -1604,4 +781,39 @@ function singlerow_gibbs(row::Integer, cols::Array{<:Integer}, C::LinkMatrix,
         #else
         #end
     end
+end
+
+"""
+Compute the conditional dirchlet distribution for updating M and U parameters via a gibbs step
+"""
+function dirichlet_draw(matchcounts::Array{<:Integer, 1},
+                        compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                        priorM::Array{<: Real, 1} = zeros(Float64, length(matchcounts)),
+                        priorU::Array{<: Real, 1} = zeros(Float64, length(matchcounts)))
+    nonmatchcounts = compsum.counts - matchcounts
+    paramM = matchcounts + priorM
+    paramU = nonmatchcounts + priorU
+
+    pM = Array{Float64}(undef, length(priorM))
+    pU = Array{Float64}(undef, length(priorU))
+    
+    startidx = 1
+    for ii in 1:length(compsum.nlevels)
+        rng = range(startidx, length = compsum.nlevels[ii])
+        startidx += compsum.nlevels[ii]
+        pM[rng] = rand(Dirichlet(paramM[rng]))
+        pU[rng] = rand(Dirichlet(paramU[rng]))
+    end
+    return pM, pU
+end
+
+function gibbs_MU_draw(matchcounts::Array{<:Integer, 1},
+                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                       countDeltas::Array{<:Integer, 2} = counts_delta(compsum),
+                       priorM::Array{<: Real, 1} = zeros(Float64, length(matchcounts)),
+                       priorU::Array{<: Real, 1} = zeros(Float64, length(matchcounts)))
+    pM, pU = dirichlet_draw(matchcounts, compsum, priorM, priorU)
+    logDiff = log.(pM) - log.(pU)
+    loglikMargin = countDeltas' * logDiff
+    return pM, pU, loglikMargin
 end
