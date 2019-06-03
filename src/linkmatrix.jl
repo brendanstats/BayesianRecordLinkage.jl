@@ -276,6 +276,7 @@ function colswitch_link!(row::G, newcol::G, C::LinkMatrix{G}) where G <: Integer
         @warn "Row not linked, no switch made"
     elseif !iszero(C.col2row[newcol])
         @warn "Newcol already assigned, no switch made"
+    else
         C.col2row[C.row2col[row]] = zero(G)
         C.row2col[row] = newcol
         C.col2row[newcol] = row
