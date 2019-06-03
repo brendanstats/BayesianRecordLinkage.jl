@@ -22,18 +22,9 @@ This types does...
 mutable struct LinkMatrix{G <: Integer}
     row2col::Array{G, 1}
     col2row::Array{G, 1}
-    #row2col::SparseVector{G, G}
-    #col2row::SparseVector{G, G}
     nlink::G
     nrow::G
     ncol::G
-    #if length(row2col) != nrow
-    #    error("Length of row2col must link nrow")
-    #elseif length(col2row) != ncol
-    #    error("Length of col2row must link ncol")
-    #else
-    #    LinkMatrix{G}(row2col, col2row, nlink, nrow, ncol) = new(row2col, col2row, nlink, nrow, ncol)
-    #end
 end
 
 LinkMatrix(nrow::G, ncol::G) where G <: Integer = LinkMatrix(zeros(G, nrow), zeros(G, ncol), zero(G), nrow, ncol)

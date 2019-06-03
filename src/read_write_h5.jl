@@ -159,6 +159,54 @@ function h5read_ParameterChain(filename::String,
     end
 end
 
+function h5write_PosthocBlocks(filename::String,
+                               phb::PosthocBlocks;
+                               groupname::String = "/",
+                               mode::String = "w") where T <: AbstractFloat
+    h5open(filename, mode) do writef
+        for (ky, vl) in phb.block2rows
+            writef[groupname * "/" * "rows/$ky"] = vl
+        end
+        for (ky, vl) in phb.block2cols
+            writef[groupname * "/" * "cols/$ky"] = vl
+        end
+        writef[groupname * "/" * "blocknrows"] = phb.blocknrows
+        writef[groupname * "/" * "blockncols"] = phb.blockncols
+        writef[groupname * "/" * "blocksingleton"] = phb.blocksingleton
+        writef[groupname * "/" * "blocknnz"] = phb.blocknnz
+        writef[groupname * "/" * "nrow"] = phb.nrow
+        writef[groupname * "/" * "ncol"] = phb.ncol
+        writef[groupname * "/" * "nblock"] = phb.nblock
+        writef[groupname * "/" * "nnz"] = phb.nnz
+    end
+    nothing
+end
+
+function h5read_PosthocBlocks(filename::String,
+                              groupname::String = "/",
+                              mode::String = "r") where T <: AbstractFloat
+    return h5open(filename, mode) do readf
+        G = eltype(readf[groupname * "/" * "rows"][names(readf[groupname * "/" * "rows"])[1]])
+        block2rows = Dict{G, Array{G, 1}}()
+        block2cols = Dict{G, Array{G, 1}}()
+        for ky in names(readf[groupname * "/" * "rows"])
+            block2rows[G(Meta.parse(ky))] = readf[groupname * "/" * "rows/$ky"]
+        end
+        for ky in names(readf[groupname * "/" * "cols"])
+            block2cols[G(Meta.parse(ky))] = readf[groupname * "/" * "cols/$ky"]
+        end
+        PosthocBlocks(block2rows,
+                      block2cols,
+                      readf[groupname * "/blocknrows"],
+                      readf[groupname * "/blockncols"],
+                      readf[groupname * "/blocksingleton"],
+                      readf[groupname * "/blocknnz"],
+                      readf[groupname * "/nrow"],
+                      readf[groupname * "/ncol"],
+                      readf[groupname * "/nblock"],
+                      readf[groupname * "/nnz"])
+    end
+end
 
 function h5write_penalized_likelihood_estimate(filename::String,
                                                priorM::Array{T, 1},
@@ -209,32 +257,6 @@ function h5write_clustering_diagnostics(filename::String,
         writef[groupname * "/" * "npairs"] = npairs
         writef[groupname * "/" * "npairscomp"] = npairscomp
         writef[groupname * "/" * "penalties"] = penalties
-    end
-    nothing
-end
-
-function h5write_posthoc_blocking(filename::String,
-                                  cc::ConnectedComponents,
-                                  mrows::Array{<: Integer, 1},
-                                  mcols::Array{<: Integer, 1},
-                                  threshold = Union{AbstractFloat, Array{<:AbstractFloat, 1}};
-                                  groupname::String = "/",
-                                  mode::String = "w")
-    h5open(filename, mode) do writef
-        writef[groupname * "/" * "rowLabels"] = cc.rowLabels
-        writef[groupname * "/" * "colLabels"] = cc.colLabels
-        writef[groupname * "/" * "rowperm"] = cc.rowperm
-        writef[groupname * "/" * "colperm"] = cc.colperm
-        writef[groupname * "/" * "rowcounts"] = cc.rowcounts
-        writef[groupname * "/" * "colcounts"] = cc.colcounts
-        writef[groupname * "/" * "cumrows"] = cc.cumrows
-        writef[groupname * "/" * "cumcols"] = cc.cumcols
-        writef[groupname * "/" * "nrow"] = cc.nrow
-        writef[groupname * "/" * "ncol"] = cc.ncol
-        writef[groupname * "/" * "ncomponents"] = cc.ncomponents
-        writef[groupname * "/" * "mrows"] = mrows
-        writef[groupname * "/" * "mcols"] = mcols
-        writef[groupname * "/" * "threshold"] = threshold
     end
     nothing
 end

@@ -2,8 +2,8 @@ struct PosthocBlocks{G <: Integer}
     
     block2rows::Dict{G, Array{G, 1}}
     block2cols::Dict{G, Array{G, 1}}
-    row2blockidx::Array{G, 1}
-    col2blockidx::Array{G, 1}
+    #row2blockidx::Array{G, 1}
+    #col2blockidx::Array{G, 1}
     
     blocknrows::Array{G, 1}
     blockncols::Array{G, 1}
@@ -41,20 +41,21 @@ end
 function PosthocBlocks(cc::ConnectedComponents{G}, compsum::ComparisonSummary) where G <: Integer
     block2rows = label2dict(cc.rowLabels)
     block2cols = label2dict(cc.colLabels)
-    row2blockidx = dict2keyidx(block2rows)
-    col2blockidx = dict2keyidx(block2cols)
+    #row2blockidx = dict2keyidx(block2rows)
+    #col2blockidx = dict2keyidx(block2cols)
     
     blocksingleton = [cc.rowcounts[kk + one(G)] == one(G) && cc.colcounts[kk + one(G)] == one(G)  for kk in one(G):cc.ncomponents]
     block2nnz = Int.(cc.rowcounts[2:end]) .* Int.(cc.colcounts[2:end])
     
-    PosthocBlocks(block2rows, block2cols, row2blockidx, col2blockidx, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
+    #return PosthocBlocks(block2rows, block2cols, row2blockidx, col2blockidx, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
+    return PosthocBlocks(block2rows, block2cols, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
 end
 
-function PosthocBlocks(cc::ConnectedComponents{G}, compsum::ComparisonSummary) where G <: Integer
+function PosthocBlocks(cc::ConnectedComponents{G}, compsum::SparseComparisonSummary) where G <: Integer
     block2rows = label2dict(cc.rowLabels)
     block2cols = label2dict(cc.colLabels)
-    row2blockidx = dict2keyidx(block2rows)
-    col2blockidx = dict2keyidx(block2cols)
+    #row2blockidx = dict2keyidx(block2rows)
+    #col2blockidx = dict2keyidx(block2cols)
     
     blocksingleton = [cc.rowcounts[kk + one(G)] == one(G) && cc.colcounts[kk + one(G)] == one(G)  for kk in one(G):cc.ncomponents]
     block2nnz = zeros(Int, cc.ncomponents)
@@ -63,7 +64,8 @@ function PosthocBlocks(cc::ConnectedComponents{G}, compsum::ComparisonSummary) w
             block2nnz[kk] += count(rowvals(compsum.obsidx)[nzrange(compsum.obsidx, col)] .== kk)
         end
     end
-    PosthocBlocks(block2rows, block2cols, row2blockidx, col2blockidx, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
+    #return PosthocBlocks(block2rows, block2cols, row2blockidx, col2blockidx, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
+    return PosthocBlocks(block2rows, block2cols, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
 end
 
 function SparseComparisonSummary(compsum::ComparisonSummary{G, T}, phb::PosthocBlocks{A}) where {G <: Integer, T <: Integer, A <: Integer}

@@ -163,57 +163,6 @@ function penalized_weights_vector(pM::Array{T, 1},
 end
 
 """
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function weights_vector_integer(pM::Array{T, 1},
-                                pU::Array{T, 1},
-                                compsum::ComparisonSummary,
-                                comps::Array{Int64, 1} = collect(1:compsum.ncomp),
-                                scale::T = 1.0e3) where T <: AbstractFloat
-    return Int64.(round.(scale .*  weights_vector(pM, pU, compsum, comps)))
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function penalized_weights_vector_integer(pM::Array{T, 1},
-                                          pU::Array{T, 1},
-                                          compsum::ComparisonSummary,
-                                          penalty::AbstractFloat = 0.0,
-                                          comps::Array{Int64, 1} = collect(1:compsum.ncomp),
-                                          scale::T = 1.0e3) where T <: AbstractFloat
-    return Int64.(round.(scale .*  penalized_weights_vector(pM, pU, compsum, penalty, comps)))
-end
-
-"""
     weights_matrix(pM, pU, comparisonSummary) -> weightArray
 
 Compute weights = log(p(γ|M) / p(γ|U)) for each comparison vector.  This is done
@@ -491,38 +440,6 @@ function compute_costs_shrunk(pM::Array{T, 1},
                               comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
     costmatrix, maxcost = compute_costs(pM, pU, compsum, penalty, comps)
     return costmatrix .- minimum(costmatrix, 2), maxcost
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function compute_costs_integer(pM::Array{T, 1},
-                               pU::Array{T, 1},
-                               compsum::ComparisonSummary,
-                               penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    weightvec = Int64.(round.((weights_vector(pM, pU, compsum) .- penalty) .* 1.0e14))
-    maxcost = ceil(maximum(weightvec))
-    costvec = fill(maxcost, length(weightvec))
-    for ii in 1:length(weightvec)
-        if weightvec[ii] > 0.0
-            costvec[ii] = maxcost - weightvec[ii]
-        end
-    end
-    return costvec[compsum.obsidx], maxcost
 end
 
 """
