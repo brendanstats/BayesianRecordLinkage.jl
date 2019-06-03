@@ -24,7 +24,7 @@ function mh_gibbs_count(
     block2cols::Dict{G, Array{G, 1}},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
-    logpdfC::Union{Function, Array{<:AbstractFloat, 1}},
+    logpCRatio::Union{Function, Array{<:AbstractFloat, 1}},
     transitionC!::Function,
     loglikMissing::AbstractFloat = -Inf) where {G <: Integer, T <: Real}
     
@@ -43,7 +43,7 @@ function mh_gibbs_count(
     countDeltas = counts_delta(compsum) #each column is an observation
     C = deepcopy(C0)
     matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+    pM, pU, loglikRatios = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
     
     #Outer iteration (recorded)
     for ii in 1:nsteps
@@ -53,9 +53,9 @@ function mh_gibbs_count(
             move = false
             countdelta = zeros(eltype(matchcounts), length(matchcounts))
             if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
+                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             else
-                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
+                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             end
             if move
                 transC[kk] += 1
@@ -77,7 +77,7 @@ function mh_gibbs_count(
         end #end block loop
 
         ##Perform Gibbs update if performed with outer iterations
-        pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+        pM, pU, loglikRatios = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
 
         #Add states to chain
         for row in 1:C.nrow
@@ -101,7 +101,7 @@ function mh_gibbs_trace(
     block2cols::Dict{G, Array{G, 1}},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
-    logpdfC::Union{Function, Array{<:AbstractFloat, 1}},
+    logpCRatio::Union{Function, Array{<:AbstractFloat, 1}},
     transitionC!::Function,
     loglikMissing::AbstractFloat = -Inf) where {G <: Integer, T <: Real}
 
@@ -125,7 +125,7 @@ function mh_gibbs_trace(
     countDeltas = counts_delta(compsum) #each column is an observation
     C = deepcopy(C0)
     matchcounts, matchobs = counts_matches(C, compsum)
-    pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+    pM, pU, loglikRatios = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
 
     currrow2col = copy(C.row2col)
     startrow2col = ones(Int, length(currrow2col)) #zeros(Int, length(currrow2col))
@@ -138,9 +138,9 @@ function mh_gibbs_trace(
             move = false
             countdelta = zeros(eltype(matchcounts), length(matchcounts))
             if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
+                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             else
-                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikMargin, countDeltas, logpdfC, loglikMissing)
+                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             end
             if move
                 transC[kk] += 1
@@ -149,7 +149,7 @@ function mh_gibbs_trace(
         end #end block loop
         
         ##Perform Gibbs update if performed with outer iterations
-        pM, pU, loglikMargin = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
+        pM, pU, loglikRatios = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
         
         #Add states to chain
         for row in 1:C.nrow
