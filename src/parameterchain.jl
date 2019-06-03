@@ -7,6 +7,8 @@ struct ParameterChain{G <: Integer, T <: AbstractFloat}
     linktrace::Bool
 end
 
+counts2indicies(A::SparseMatrixCSC{G, T}) where {G <: Integer, T <: Integer} = hcat(findnz(A)...)
+
 function counts2indicies(A::Array{G, 2}) where G <: Integer
     rows = Int[]
     cols = Int[]
