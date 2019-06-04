@@ -472,7 +472,7 @@ function iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::In
             
             #update cluster thresholds and cluster number
             if maxLabel == 0
-                warn("component with $(length(clusterRows)) rows and $(length(clusterCols)) columns could not be subdivided, consider using a smaller increment.")
+                @warn "component with $(length(clusterRows)) rows and $(length(clusterCols)) columns could not be subdivided, consider using a smaller increment."
 
                 #reset cluster indicies so that there are no gaps in the numbering
                 for clust in kk:(maxLabel0 - 1)
