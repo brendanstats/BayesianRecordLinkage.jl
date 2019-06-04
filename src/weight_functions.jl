@@ -2,7 +2,7 @@
 Find the smallest margin between sorted entries in a vector
 """
 function minimum_margin(x::Array{<:Real, 1})
-    s = sort(unique(round.(x, 10)))
+    s = sort(unique(round.(x, digits=10)))
     margin = minimum(s[2:end] - s[1:end-1])
     return margin
 end
@@ -40,22 +40,13 @@ function counts_matches(mrows::Array{G, 1},
 end
 
 #change to count_matches(findn(C.row2col)..., compsum)?
-function counts_matches(C::LinkMatrix{G},
-                        compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+function counts_matches(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
     
     #count occurences of each observation in obsvecs
     matchvecct = zeros(Int64, length(compsum.obsvecct))
-    if C.nrow < C.ncol
-        for (ii, jj) in pairs(IndexLinear(), C.row2col)
-            if jj != zero(G)
-                matchvecct[compsum.obsidx[ii, jj]] += 1
-            end
-        end
-    else
-        for (jj, ii) in pairs(IndexLinear(), C.col2row)
-            if ii != zero(G)
-                matchvecct[compsum.obsidx[ii, jj]] += 1
-            end
+    for (ii, jj) in pairs(IndexLinear(), row2col)
+        if jj != zero(G)
+            matchvecct[compsum.obsidx[ii, jj]] += 1
         end
     end
 
@@ -75,6 +66,8 @@ function counts_matches(C::LinkMatrix{G},
     end
     return matchcounts, matchobs
 end
+
+counts_matches(C::LinkMatrix{G}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer = counts_matches(C.row2col, compsum)
 
 """
     f(x::Type)
@@ -100,7 +93,7 @@ function weights_vector(pM::Array{T, 1},
     weightinc = log.(pM) - log.(pU)
     weightvec = zeros(Float64, length(compsum.obsvecct))
 
-    for jj in 1:length(weightvec), ii in comps
+    for jj in 1:length(weightvec), ii in 1:compsum.ncomp
         if compsum.obsvecs[ii, jj] != 0
             weightvec[jj] += weightinc[compsum.cadj[ii] + compsum.obsvecs[ii, jj]]
         end
@@ -154,12 +147,8 @@ end
 
 ```
 """
-function penalized_weights_vector(pM::Array{T, 1},
-                                  pU::Array{T, 1},
-                                  compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                  penalty::AbstractFloat = 0.0,
-                                  comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    return shrink_weights!(weights_vector(pM, pU, compsum, comps), penalty)
+function penalized_weights_vector(pM::Array{T, 1}, pU::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+    return shrink_weights!(weights_vector(pM, pU, compsum), penalty)
 end
 
 """
@@ -170,31 +159,12 @@ efficiently by computing the weight once for each observed comparison and then m
 based on the storred array indicies.  Missing do not contribute to the weights assuming
 ignorability.
 """
-function weights_matrix(pM::Array{T, 1},
-                        pU::Array{T, 1},
-                        compsum::ComparisonSummary,
-                        comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum, comps)
-    return weightvec[compsum.obsidx]
-end
+weights_matrix(weightvec::Array{T, 1}, compsum::ComparisonSummary) where T <: Real = weightvec[compsum.obsidx]
 
-function weights_matrix(pM::Array{T, 1},
-                        pU::Array{T, 1},
-                        compsum::SparseComparisonSummary,
-                        comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum, comps)
-    return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, weightvec[compsum.obsidx.nzval])
-end
+weights_matrix(weightvec::Array{T, 1}, compsum::SparseComparisonSummary) where T <: Real = SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, weightvec[compsum.obsidx.nzval])
 
-function weights_matrix(weightvec::Array{T, 1},
-                        compsum::ComparisonSummary) where T <: Real
-    return weightvec[compsum.obsidx]
-end
+weights_matrix(pM::Array{T, 1}, pU::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <: AbstractFloat = weights_matrix(weights_vector(pM, pU, compsum), compsum)
 
-function weights_matrix(weightvec::Array{T, 1},
-                        compsum::SparseComparisonSummary) where T <: Real
-    return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, weightvec[compsum.obsidx.nzval])
-end
 
 """
     maximum_weights_matrix(pM, pU, comparisonSummary) -> weightArray
@@ -207,12 +177,11 @@ not contribute to the weights assuming ignorability.
 """
 function maximum_weights_vector(pM::Array{T, 2},
                                 pU::Array{T, 2},
-                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+                                compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <: AbstractFloat
     weightinc = log.(pM) - log.(pU)
     weightmat = zeros(T, length(compsum.obsvecct), size(weightinc, 1))
 
-    for jj in 1:length(compsum.obsvecct), ii in comps
+    for jj in 1:length(compsum.obsvecct), ii in 1:compsum.ncomp
         if compsum.obsvecs[ii, jj] != 0
             for kk in 1:size(weightinc, 1)
                 weightmat[jj, kk] += weightinc[kk, compsum.cadj[ii] + compsum.obsvecs[ii, jj]]
@@ -240,26 +209,11 @@ end
 
 ```
 """
-function maximum_weights_matrix(pM::Array{T, 2},
-                                pU::Array{T, 2},
-                                compsum::ComparisonSummary,
-                                comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: Real
-    weightvec = maximum_weights_vector(pM, pU, compsum, comps)
-    return weightvec[compsum.obsidx]
-end
+maximum_weights_matrix(pM::Array{T, 2}, pU::Array{T, 2}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <: Real = maximum_weights_matrix(maximum_weights_vector(pM, pU, compsum), compsum)
 
-function maximum_weights_matrix(pM::Array{T, 2},
-                                pU::Array{T, 2},
-                                compsum::SparseComparisonSummary,
-                                comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: Real
-    weightvec = maximum_weights_vector(pM, pU, compsum, comps)
-    return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, weightvec[compsum.obsidx.nzval])
-end
+maximum_weights_matrix(weightvec::Array{T, 1}, compsum::ComparisonSummary) where T <: AbstractFloat = weightvec[compsum.obsidx]
 
-function maximum_weights_matrix(weightvec::Array{T, 1},
-                                compsum::ComparisonSummary) where T <: AbstractFloat
-    return weightvec[compsum.obsidx]
-end
+maximum_weights_matrix(weightvec::Array{T, 1}, compsum::SparseComparisonSummary) where T <: AbstractFloat = SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, weightvec[compsum.obsidx.nzval])
 
 """
     penalized_weights_matrix(pM, pU, comparisonSummary) -> weightArray
@@ -275,7 +229,7 @@ function penalized_weights_matrix(pweightvec::Array{T, 1}, compsum::ComparisonSu
     
     rows = Array{Int64}(undef, n)
     cols = Array{Int64}(undef, n)
-    pweights = Array{T}(n)
+    pweights = Array{T}(undef, n)
 
     ii = 0
     
@@ -320,10 +274,8 @@ function penalized_weights_matrix(pweightvec::Array{T, 1}, compsum::SparseCompar
     return sparse(rows[1:ii], cols[1:ii], pweights[1:ii], compsum.nrow, compsum.ncol)
 end
 
-function penalized_weights_matrix(weightvec::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::AbstractFloat) where T <: AbstractFloat
-    pweightvec = max.(weightvec .- penalty, 0.0)
-    return penalized_weights_matrix(pweightvec, compsum)
-end
+penalized_weights_matrix(weightvec::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::T) where T <: AbstractFloat = penalized_weights_matrix(shrink_weights(weightvec, penalty), compsum)
+
 
 function penalized_weights_matrix(pM::Array{T, 1},
                                   pU::Array{T, 1},
@@ -344,38 +296,9 @@ Calculation is done efficiently by computing the weight once for each observed
 comparison and then mapping based on the storred array indicies.  Missing values do not
 contribute to the weights assuming ignorability.
 """
-function indicator_weights_matrix(pM::Array{T, 1},
-                                  pU::Array{T, 1},
-                                  compsum::ComparisonSummary,
-                                  penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum)
-    iweightvec = weightvec .> penalty
-    return iweightvec[compsum.obsidx]
-end
+indicator_weights_matrix(weightvec::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::AbstractFloat = 0.0) where T <: AbstractFloat = penalized_weights_matrix(map(w -> w > penalty, weightvec), compsum)
 
-function indicator_weights_matrix(pM::Array{T, 1},
-                                  pU::Array{T, 1},
-                                  compsum::SparseComparisonSummary,
-                                  penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum)
-    iweightvec = weightvec .> penalty
-    return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, collect(iweightvec[compsum.obsidx.nzval]))
-end
-
-function indicator_weights_matrix(weightvec::Array{T, 1},
-                                  compsum::ComparisonSummary,
-                                  penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    iweightvec = weightvec .> penalty
-    return iweightvec[compsum.obsidx]
-end
-
-function indicator_weights_matrix(weightvec::Array{T, 1},
-                                  compsum::SparseComparisonSummary,
-                                  penalty::AbstractFloat = 0.0) where T <: AbstractFloat
-    iweightvec = weightvec .> penalty
-    return SparseMatrixCSC(compsum.obsidx.m, compsum.obsidx.n, compsum.obsidx.colptr, compsum.obsidx.rowval, collect(iweightvec[compsum.obsidx.nzval]))
-end
-
+indicator_weights_matrix(pM::Array{T, 1}, pU::Array{T, 1}, compsum::Union(ComparisonSummary, SparseComparisonSummary), penalty::AbstractFloat = 0.0) where T <: AbstractFloat = indicator_weights_matrix(weights_vector(pM, pU, compsum), compsum, penalty)
 
 """
     compute_costs(pM, pU, comparisonSummary, penalty) -> costArray, maxcost
@@ -385,9 +308,8 @@ Compuate a cost matrix to transform maximization problem into minimiation proble
 function compute_costs(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::ComparisonSummary,
-                       penalty::AbstractFloat = 0.0,
-                       comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum, comps) .- penalty
+                       penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+    weightvec = weights_vector(pM, pU, compsum) .- penalty
     maxcost = maximum(weightvec)
     costvec = fill(maxcost, length(weightvec))
     for ii in 1:length(weightvec)
@@ -401,9 +323,8 @@ end
 function compute_costs(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::SparseComparisonSummary,
-                       penalty::AbstractFloat = 0.0,
-                       comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum, comps) .- penalty
+                       penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+    weightvec = weights_vector(pM, pU, compsum) .- penalty
     maxcost = maximum(weightvec)
     costvec = fill(maxcost, length(weightvec))
     for ii in 1:length(weightvec)
@@ -436,9 +357,8 @@ end
 function compute_costs_shrunk(pM::Array{T, 1},
                               pU::Array{T, 1},
                               compsum::ComparisonSummary,
-                              penalty::AbstractFloat = 0.0,
-                              comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    costmatrix, maxcost = compute_costs(pM, pU, compsum, penalty, comps)
+                              penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+    costmatrix, maxcost = compute_costs(pM, pU, compsum, penalty)
     return costmatrix .- minimum(costmatrix, 2), maxcost
 end
 
@@ -459,9 +379,8 @@ end
 
 ```
 """
-function bayesrule_posterior(w::Array{T, 1}, p::T) where T <: AbstractFloat
-    return logistic.(logit(p) .+ w)
-end
+bayesrule_posterior(w::Array{T, 1}, p::T) where T <: AbstractFloat = logistic.(logit(p) .+ w)
+
 
 """
     f(x::Type)
