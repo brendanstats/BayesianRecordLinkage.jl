@@ -267,7 +267,7 @@ function map_solver_search(pM0::Array{G, 1},
         mcols = mcols[keep]
         pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
     end
-    return outMatches, outM', outU', penalties, outIter
+    return outMatches, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), penalties, outIter
 end
 
 """
@@ -338,7 +338,7 @@ function map_solver_search_cluster(pM0::Array{G, 1},
         pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
 
     end
-    return outMatches, outM', outU', penalties, outIter
+    return outMatches, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), penalties, outIter
 end
 
 """
@@ -441,7 +441,7 @@ function map_solver_search_auction(pM0::Array{G, 1},
         pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
         prevcounts = counts_matches(mrows, mcols, compsum)[1]
     end
-    return outMatches, outM', outU', penalties, outIter
+    return outMatches, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), penalties, outIter
 end
 
 """
@@ -585,5 +585,5 @@ function map_solver_search_auction_cluster(pM0::Array{G, 1},
         pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
         prevcounts = counts_matches(mrows, mcols, compsum)[1]
     end
-    return outMatches, outM', outU', penalties, outIter
+    return outMatches, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), penalties, outIter
 end
