@@ -1,7 +1,7 @@
 """
 Find the smallest margin between sorted entries in a vector
 """
-function minimum_margin(x::Array{T, 1}, minmargin::T = zero(T), digits::Integer = 5) <: Real
+function minimum_margin(x::Array{T, 1}, minmargin::T = zero(T), digits::Integer = 5) where T <: Real
     s = sort(unique(round.(x, digits=digits)))
     margin = minimum(s[2:end] - s[1:end-1])
     return max(margin, minmargin)
@@ -298,7 +298,7 @@ contribute to the weights assuming ignorability.
 """
 indicator_weights_matrix(weightvec::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::AbstractFloat = 0.0) where T <: AbstractFloat = penalized_weights_matrix(map(w -> w > penalty, weightvec), compsum)
 
-indicator_weights_matrix(pM::Array{T, 1}, pU::Array{T, 1}, compsum::Union(ComparisonSummary, SparseComparisonSummary), penalty::AbstractFloat = 0.0) where T <: AbstractFloat = indicator_weights_matrix(weights_vector(pM, pU, compsum), compsum, penalty)
+indicator_weights_matrix(pM::Array{T, 1}, pU::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::AbstractFloat = 0.0) where T <: AbstractFloat = indicator_weights_matrix(weights_vector(pM, pU, compsum), compsum, penalty)
 
 """
     compute_costs(pM, pU, comparisonSummary, penalty) -> costArray, maxcost

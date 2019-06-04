@@ -7,6 +7,7 @@ using StatsBase
 using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp
 using SparseArrays
 using SpecialFunctions: lfactorial, lbeta
+using Dates: now, format
 import Base: ==
 
 export ComparisonSummary,

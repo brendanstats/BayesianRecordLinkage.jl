@@ -14,8 +14,32 @@ function max_MU(mrows::Array{G, 1},
     nonmatchobs = compsum.obsct - matchobs
 
     #Add regularization to generate denominators
-    matchtotals = promote_type(G, T).(matchobs)
-    nonmatchtotals = promote_type(G, T).(nonmatchobs)
+    matchtotals = promote_type(Int64, T).(matchobs)
+    nonmatchtotals = promote_type(Int64, T).(nonmatchobs)
+    for (ii, pm, pu) in zip(compsum.cmap, pseudoM, pseudoU)
+        matchtotals[ii] += pm
+        nonmatchtotals[ii] += pu
+    end
+
+    #Generate probabilities
+    pM = (T.(matchcounts) + pseudoM) ./ matchtotals[compsum.cmap]
+    pU = (T.(nonmatchcounts) + pseudoU) ./ nonmatchtotals[compsum.cmap]
+    
+    return pM, pU
+end
+
+function max_MU(rows2cols::Array{G, 1},
+                compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                pseudoM::Array{T, 1},
+                pseudoU::Array{T, 1}) where {G <: Integer, T <: Real}
+    #Count Match / Non-match observations
+    matchcounts, matchobs = counts_matches(rows2cols, compsum)
+    nonmatchcounts = compsum.counts - matchcounts
+    nonmatchobs = compsum.obsct - matchobs
+
+    #Add regularization to generate denominators
+    matchtotals = promote_type(Int64, T).(matchobs)
+    nonmatchtotals = promote_type(Int64, T).(nonmatchobs)
     for (ii, pm, pu) in zip(compsum.cmap, pseudoM, pseudoU)
         matchtotals[ii] += pm
         nonmatchtotals[ii] += pu
@@ -33,66 +57,116 @@ end
 """
 function max_C(pM::Array{T, 1},
                pU::Array{T, 1},
-               compsum::ComparisonSummary,
-               penalty::AbstractFloat = 0.0,
-               comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+               compsum::Union{ComparisonSummary, SparseComparisonSummary},
+               penalty::AbstractFloat = 0.0) where T <: AbstractFloat
 
-    if compsum.nrow <= compsum.ncol
-        wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty, comps)
-        sol = clue.solve_LSAP(RObject(wpenalized), maximum = RObject(true))
-        mcols = rcopy(Array{Int64, 1}, sol)
-        keep = falses(mcols)
-        for (rr, cc) in enumerate(IndexLinear(), mcols)
-            if wpenalized[rr, cc] > 0.0
-                keep[rr] = true
-            end
-        end
-        return find(keep), mcols[keep]
-    else
-        wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)'
-        sol = clue.solve_LSAP(RObject(wpenalized), maximum = RObject(true))
-        mrows = rcopy(Array{Int64, 1}, sol)
-        keep = falses(mrows)
-        for (rr, cc) in enumerate(IndexLinear(), mrows)
-            if wpenalized[rr, cc] > 0.0
-                keep[rr] = true
-            end
-        end
-        return mrows[keep], find(keep)
-    end
+    #assignment algorithm should handle case where nrow > ncol 
+    wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)
+    astate = auction_assignment_padasfr2(wpenalized)[1]
+    keep = astate.r2c .<= compsum.ncol
+    return findall(keep), astate.r2c[keep]
 end
 
-function max_C(pM::Array{T, 1},
-               pU::Array{T, 1},
-               compsum::SparseComparisonSummary,
-               penalty::AbstractFloat = 0.0,
-               comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+function max_C_cluster(pM::Array{T, 1},
+                       pU::Array{T, 1},
+                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                       penalty::AbstractFloat = 0.0;
+                       verbose::Bool = false) where T <: AbstractFloat
+    
+    ##Run clustering algorithm to split LSAP
+    wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)
+    rowLabels, colLabels, maxLabel = bipartite_cluster(wpenalized, 0.0)
 
-    if compsum.nrow <= compsum.ncol
-        wpenalized = full(penalized_weights_matrix(pM, pU, compsum, penalty, comps)) #makes it non-sparse do not want to use in most cases
-        sol = clue.solve_LSAP(RObject(wpenalized), maximum = RObject(true))
-        mcols = rcopy(Array{Int64, 1}, sol)
-        keep = falses(mcols)
-        for (rr, cc) in enumerate(IndexLinear(), mcols)
-            if wpenalized[rr, cc] > 0.0
-                keep[rr] = true
-            end
-        end
-        return find(keep), mcols[keep]
-    else
-        wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)'
-        sol = clue.solve_LSAP(RObject(wpenalized), maximum = RObject(true))
-        mrows = rcopy(Array{Int64, 1}, sol)
-        keep = falses(mrows)
-        for (rr, cc) in enumerate(IndexLinear(), mrows)
-            if wpenalized[rr, cc] > 0.0
-                keep[rr] = true
-            end
-        end
-        return mrows[keep], find(keep)
+    ##Mark clusters for rows
+    block2rows = label2dict(rowLabels)
+    block2cols = label2dict(colLabels)
+    
+    if verbose
+        maxsize = maximum([length(block2rows[ii]) * length(block2cols[ii]) for ii in 1:maxLabel])
+        println("Maximum Cluster Size: $maxsize")
     end
+    
+    ##Compute cost matrix
+    rows2cols = zeros(Int64, compsum.nrow)
+    for kk in 1:maxLabel
+
+        if verbose
+            println("Cluster: $kk of $maxLabel")
+        end
+        
+        #Matrix should technically already be full here, assuming blocks
+        if length(block2rows[kk]) == 1 && length(block2cols[kk]) == 1
+            rows2cols[block2rows[kk][1]] = block2cols[kk][1]
+        else
+            astate = auction_assignment_padasfr2(wpenalized[block2rows[kk], block2cols[kk]])[1]
+            for ridx in 1:astate.nrow
+                if !iszero(astate.r2c[ridx]) && astate.r2c[ridx] < length(block2cols[kk])
+                    rows2cols[block2rows[kk][ridx]] = block2cols[kk][astate.r2c[ridx]]
+                end
+            end
+        end
+    end
+    
+    keep = .!iszero.(rows2cols)
+    return findall(keep), rows2cols[keep]
 end
 
+"""
+    f(x::Type)
+
+### Arguments
+
+* `var` : brief description
+
+### Details
+
+### Value
+
+### Examples
+
+```julia
+
+```
+"""
+function max_C_auction(pM::Array{T, 1},
+                       pU::Array{T, 1},
+                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                       penalty::AbstractFloat = 0.0;
+                       lambda0::T = zero(T), epsi0::T = -one(T), epsiscale::T = T(0.2),
+                       minmargin::T = zero(T), digits::Integer = 5) where T <: AbstractFloat
+    #Compute weights
+    #wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)
+    w = penalized_weights_vector(pM, pU, compsum, penalty)
+    weightMat = weights_matrix(w, compsum)
+
+    #Determine error levels for complete assignment
+    margin = minimum_margin(w, minmargin, digits)
+    if epsi0 < zero(T)
+        epsi0 = margin * epsiscale
+    end
+    epsitol = margin / min(compsum.nrow, compsum.ncol)
+    #epsitol::T
+    #Solve assignment problem
+    astate, lambda = auction_assignment_padasfr2(wpenalized)
+    #astate, lambda = auction_assignment_padasfr2(wpenalized, astate = astate, lambda0 = lambda, epsi0 = epsi0, epsitol = epsitol, epsiscale = epsiscale)
+    #r2c, c2r, rowCosts, colCosts, λ = scaling_forward_backward(weightMat, ε0, εfinal, εscale)
+    #λ = minimum(colCosts[.!iszero.(c2r)])
+
+    #Convert assignment format, should change the convention here eventually
+    #mrows = Int[]
+    #for ii in 1:length(r2c)
+    #    if !iszero(r2c[ii]) && weightMat[ii, r2c[ii]] > 0.0
+    #        push!(mrows, ii)
+    #    end
+    #end
+    #mcols = r2c[mrows]
+    
+    return astate, w, lambda, epsilon
+end
+
+#astate::AssignmentState
+
+#=
 """
     f(x::Type)
 
@@ -113,12 +187,11 @@ end
 function max_C_cluster(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::ComparisonSummary,
-                       penalty::AbstractFloat = 0.0,
-                       comps::Array{Int64, 1} = collect(1:compsum.ncomp);
+                       penalty::AbstractFloat = 0.0;
                        verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
-    aboveThreshold = indicator_weights_matrix(pM, pU, compsum, penalty, comps)
+    aboveThreshold = indicator_weights_matrix(pM, pU, compsum, penalty)
     rowLabels, colLabels, maxLabel = bipartite_cluster(aboveThreshold) #diff
 
     ##Mark clusters for rows
@@ -138,7 +211,7 @@ function max_C_cluster(pM::Array{T, 1},
     end
 
     ##Compute cost matrix
-    costs, maxcost = compute_costs(pM, pU, compsum, penalty, comps)
+    costs, maxcost = compute_costs(pM, pU, compsum, penalty)
     rows2cols = zeros(Int64, compsum.nrow)
     for kk in 1:maxLabel
         clusterCols = find(colCluster[:, kk])
@@ -167,6 +240,7 @@ function max_C_cluster(pM::Array{T, 1},
     
     return mrows, mcols
 end
+=#
 
 """
     f(x::Type)
@@ -188,12 +262,11 @@ end
 function max_C_cluster2(pM::Array{T, 1},
                         pU::Array{T, 1},
                         compsum::ComparisonSummary,
-                        penalty::AbstractFloat = 0.0,
-                        comps::Array{Int64, 1} = collect(1:compsum.ncomp);
+                        penalty::AbstractFloat = 0.0;
                         verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
-    w = penalized_weights_vector(pM, pU, compsum, penalty, comps)
+    w = penalized_weights_vector(pM, pU, compsum, penalty)
     weightMat = dropzeros(sparse(weights_matrix(w, compsum)))
     rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
 
@@ -234,118 +307,6 @@ function max_C_cluster2(pM::Array{T, 1},
     return mrows, mcols
 end
 
-function max_C_cluster(pM::Array{T, 1},
-                       pU::Array{T, 1},
-                       compsum::SparseComparisonSummary,
-                       penalty::AbstractFloat = 0.0,
-                       comps::Array{Int64, 1} = collect(1:compsum.ncomp);
-                       verbose::Bool = false) where T <: AbstractFloat
-    
-    ##Run clustering algorithm to split LSAP
-    aboveThreshold = indicator_weights_matrix(pM, pU, compsum, penalty, comps)
-    rowLabels, colLabels, maxLabel = bipartite_cluster_sparseblock(aboveThreshold)
-
-    ##Mark clusters for rows
-    rowCluster = falses(compsum.nrow, maxLabel)
-    for (ii, label) in enumerate(IndexLinear(), rowLabels)
-        if label > 0
-            rowCluster[ii, label] = true
-        end
-    end
-
-    ##Mark clusters for columns
-    colCluster = falses(compsum.ncol, maxLabel)
-    for (ii, label) in enumerate(IndexLinear(), colLabels)
-        if label > 0
-            colCluster[ii, label] = true
-        end
-    end
-
-    if verbose
-        maxsize = maximum(concomp.rowcounts[2:end] .* concomp.colcounts[2:end])
-        println("Maximum Cluster Size: $maxsize")
-    end
-    
-    ##Compute cost matrix
-    costs, maxcost = compute_costs(pM, pU, compsum, penalty)
-    rows2cols = zeros(Int64, compsum.nrow)
-    for kk in 1:maxLabel
-        clusterCols = find(colCluster[:, kk])
-        clusterRows = find(rowCluster[:, kk])
-
-        if verbose
-            println("Cluster: $kk of $maxLabel")
-        end
-        
-        #Matrix should technically already be full here, assuming blocks
-        assignment = lsap_solver_tracking(full(costs[clusterRows, clusterCols]))[1]
-        for (row, colidx) in zip(clusterRows, assignment)
-            if !iszero(colidx)
-                rows2cols[row] = clusterCols[colidx]
-            end
-        end
-    end
-    
-    keep = falses(compsum.nrow)
-    for (ii, jj) in enumerate(IndexLinear(), rows2cols)
-        if jj != 0 && (costs[ii, jj] < maxcost)
-            keep[ii] = true
-        end
-    end
-    mrows = find(keep)
-    mcols = rows2cols[mrows]
-    
-    return mrows, mcols
-end
-
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-function max_C_auction(pM::Array{T, 1},
-                       pU::Array{T, 1},
-                       compsum::ComparisonSummary,
-                       penalty::AbstractFloat = 0.0,
-                       εscale::T = 0.2,
-                       comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    #Compute weights
-    w = penalized_weights_vector(pM, pU, compsum, penalty, comps)
-    weightMat = weights_matrix(w, compsum)
-
-    #Determine error levels for complete assignment
-    margin = minimum_margin(w)
-    ε0 = 0.5 * margin
-    εfinal = margin / min(compsum.nrow, compsum.ncol)
-
-    #Solve assignment problem
-    r2c, c2r, rowCosts, colCosts, λ = scaling_forward_backward(weightMat, ε0, εfinal, εscale)
-    λ = minimum(colCosts[.!iszero.(c2r)])
-
-    #Convert assignment format, should change the convention here eventually
-    mrows = Int[]
-    for ii in 1:length(r2c)
-        if !iszero(r2c[ii]) && weightMat[ii, r2c[ii]] > 0.0
-            push!(mrows, ii)
-        end
-    end
-    mcols = r2c[mrows]
-    
-    return mrows, mcols, rowCosts, colCosts, w, εfinal, λ
-end
-
 function max_C_auction(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::ComparisonSummary,
@@ -355,10 +316,9 @@ function max_C_auction(pM::Array{T, 1},
                        prevε::T,
                        λ::T,
                        penalty::AbstractFloat = 0.0,
-                       εscale::T = 0.2,
-                       comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
+                       εscale::T = 0.2) where T <: AbstractFloat
     #Compute weights
-    w = penalized_weights_vector(pM, pU, compsum, penalty, comps)
+    w = penalized_weights_vector(pM, pU, compsum, penalty)
     weightMat = weights_matrix(w, compsum)
 
     #Determine error levels for complete assignment
@@ -417,11 +377,10 @@ function max_C_auction_cluster(pM::Array{T, 1},
                                compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                penalty::AbstractFloat = 0.0,
                                εscale::AbstractFloat = 0.2,
-                               comps::Array{Int64, 1} = collect(1:compsum.ncomp);
                                verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
-    w = penalized_weights_vector(pM, pU, compsum, penalty, comps)
+    w = penalized_weights_vector(pM, pU, compsum, penalty)
     weightMat = dropzeros(sparse(penalized_weights_matrix(w, compsum)))
     rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat)
     concomp = ConnectedComponents(rowLabels, colLabels, maxLabel)
@@ -498,12 +457,11 @@ function max_C_auction_cluster(pM::Array{T, 1},
                                prevw::Array{T, 1},
                                prevmargin::AbstractFloat,
                                penalty::AbstractFloat = 0.0,
-                               εscale::AbstractFloat = 0.2,
-                               comps::Array{Int64, 1} = collect(1:compsum.ncomp);
+                               εscale::AbstractFloat = 0.2;
                                verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
-    w = penalized_weights_vector(pM, pU, compsum, penalty, comps)
+    w = penalized_weights_vector(pM, pU, compsum, penalty)
     if maximum(w) <= zero(T)
         return Int64[], Int64[], r2c, c2r, rowCosts, colCosts, w, 0.0
     end
@@ -647,12 +605,11 @@ function max_C_sparseauction_cluster(pM::Array{T, 1},
                                      pU::Array{T, 1},
                                      compsum::Union{ComparisonSummary, SparseComparisonSummary},
                                      penalty::AbstractFloat = 0.0,
-                                     εscale::AbstractFloat = 0.2,
-                                     comps::Array{Int64, 1} = collect(1:compsum.ncomp);
+                                     εscale::AbstractFloat = 0.2;
                                      verbose::Bool = false) where T <: AbstractFloat
     
     ##Compute weights
-    w = penalized_weights_vector(pM, pU, compsum, penalty, comps)
+    w = penalized_weights_vector(pM, pU, compsum, penalty)
     weightMat = weights_matrix(w, compsum)
     
     ##Run clustering algorithm to split LSAP
