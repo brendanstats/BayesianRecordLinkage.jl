@@ -1,10 +1,10 @@
 """
 Find the smallest margin between sorted entries in a vector
 """
-function minimum_margin(x::Array{<:Real, 1})
-    s = sort(unique(round.(x, digits=10)))
+function minimum_margin(x::Array{T, 1}, minmargin::T = zero(T), digits::Integer = 5) <: Real
+    s = sort(unique(round.(x, digits=digits)))
     margin = minimum(s[2:end] - s[1:end-1])
-    return margin
+    return max(margin, minmargin)
 end
 
 """
