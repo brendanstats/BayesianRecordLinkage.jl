@@ -13,7 +13,8 @@ function map_solver(pM0::Array{G, 1},
     ##Modes are found using pseudo counts of 1 - αᵢ
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
-    currmrows, currmcols = max_C(pM0, pU0, compsum, penalty)
+    row2col = max_C(pM0, pU0, compsum, penalty)
+    matchcounts, obscounts = counts_matches(row2col, compsum)
     pM = copy(pM0)
     pU = copy(pU0)
     iter = 0
@@ -25,18 +26,18 @@ function map_solver(pM0::Array{G, 1},
             nmatch = length(currmrows)
             println("Matches: $nmatch")
         end
-        pM, pU = max_MU(currmrows, currmcols, compsum, pseudoM, pseudoU)
-        newmrows, newmcols = max_C(pM, pU, compsum, penalty)
-        if length(newmrows) == length(currmrows)
-            if all(newmrows .== currmrows) && all(newmcols .== currmcols)
-                return currmrows, currmcols, pM, pU, iter
-            end
+        pM, pU = max_MU(row2col, compsum, pseudoM, pseudoU)
+        newrow2col = max_C(pM, pU, compsum, penalty)
+        newmatchcounts, newobscounts = counts_matches(newrow2col, compsum)
+        if obscounts == newobscounts && matchcounts == newmatchcounts
+            return row2col, pM, pU, iter
         end
-        currmrows = newmrows
-        currmcols = newmcols
+        row2col = newrow2col
+        matchcounts = newmatchcounts
+        obscounts = newobscounts
     end
     @warn "Maximum number of iterations reached"
-    return currmrows, currmcols, pM, pU, iter
+    return row2col, pM, pU, iter
 end
 
 """

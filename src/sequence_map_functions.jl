@@ -24,7 +24,7 @@ function next_penalty(pM::Array{T, 1},
         error("mininc must be non-zero")
     elseif mininc > 0
         ii = findfirst(x -> (x - penalty0) > mininc, wv)
-        if ii == 0
+        if ii === nothing
             return wv[end], 0
         elseif ii < length(wv)
             return 0.95 * wv[ii] + 0.05 * wv[ii + 1], length(wv) - ii
@@ -33,7 +33,7 @@ function next_penalty(pM::Array{T, 1},
         end
     else
         ii = findlast(x -> x <= (mininc + penalty0), wv)
-        if ii == 0
+        if ii === nothing
             return wv[1], length(w)
         elseif ii < length(wv)
             return 0.95 * wv[ii] + 0.05 * wv[ii + 1], ii
@@ -43,16 +43,17 @@ function next_penalty(pM::Array{T, 1},
     end
 end
 
-function next_penalty(mrows::Array{G, 1},
-                      mcols::Array{G, 1},
+function next_penalty(row2col::Array{G, 1},
                       pM::Array{T, 1},
                       pU::Array{T, 1},
                       compsum::Union{ComparisonSummary, SparseComparisonSummary},
                       penalty0::AbstractFloat, mininc::AbstractFloat = 0.0) where {G <: Integer, T <: AbstractFloat}
     matchobs = falses(length(compsum.obsvecct))
-    for (ii, jj) in zip(mrows, mcols)
-        if !matchobs[compsum.obsidx[ii, jj]]
-            matchobs[compsum.obsidx[ii, jj]] = true
+    for row in 1:length(row2col)
+        if !iszero(row2col[row]) && row2col[row] <= compsum.ncol
+            if !matchobs[compsum.obsidx[row, row2col[row]]]
+                matchobs[compsum.obsidx[row, row2col[row]]] = true
+            end
         end
     end
 
@@ -60,12 +61,14 @@ function next_penalty(mrows::Array{G, 1},
         return penalty0, 0
    end
     
-    wv = sort!(weights_vector(pM, pU, compsum))
+    wv = weights_vector(pM, pU, compsum)
+    minmatch = minimum(wv[matchobs])
+    sort!(wv)
     if iszero(mininc)
         error("mininc must be non-zero")
     elseif mininc > 0
-        ii = findfirst(x -> (x - penalty0) > mininc, wv)
-        if ii == 0
+        ii = findfirst(x -> (x - penalty0) > mininc && x >= minmatch, wv)
+        if ii === nothing
             return wv[end], 0
         elseif ii < length(wv)
             return 0.95 * wv[ii] + 0.05 * wv[ii + 1], length(wv) - ii
@@ -74,7 +77,7 @@ function next_penalty(mrows::Array{G, 1},
         end
     else
         ii = findlast(x -> x <= (mininc + penalty0), wv)
-        if ii == 0
+        if ii === nothing
             return wv[1], length(w)
         elseif ii < length(wv)
             return 0.95 * wv[ii] + 0.05 * wv[ii + 1], ii
@@ -231,16 +234,28 @@ function map_solver_search(pM0::Array{G, 1},
     
     pseudoM = priorM - ones(T, length(priorM))
     pseudoU = priorU - ones(T, length(priorU))
+
+    outrows = Int[]
+    outcols = Int[]
+    outstart = Int[]
+    outstop = Int[]
     
     #Solver for first value
-    mrows, mcols, pM, pU, iter = map_solver(pM0, pU0, compsum, priorM, priorU, penalty0, maxIter = maxIter)
+    row2col, pM, pU, iter = map_solver(pM0, pU0, compsum, priorM, priorU, penalty0, maxIter = maxIter)
+    penalty = copy(penalty0)
+    nabove = count(penalized_weights_vector(pM, pU, compsum, penalty0) .> 0.0)
+    outLinks = [count(.!iszero.(row2col))]
     outM = copy(pM)
     outU = copy(pU)
     outIter = [iter]
     penalties = [penalty0]
-    outMatches = Dict(1 => (mrows, mcols))
-    penalty, nabove = next_penalty(mrows, mcols, pM, pU, compsum, penalty0, mininc)
+
+    prevrow2col = copy(row2col)
+    startrow2col = ones(Int, length(row2col)) #zeros(Int, length(currrow2col))
+    
+    #outMatches = Dict(1 => copy(row2col))
     ii = 1
+    
     while nabove > 1
         if verbose
             println("penalty: $penalty, matches: $(length(mrows)), nabove: $nabove")
@@ -252,22 +267,57 @@ function map_solver_search(pM0::Array{G, 1},
             end
         end
         ii += 1
-        mrows, mcols, pM, pU, iter = map_solver(pM, pU, compsum, priorM, priorU, penalty, maxIter = maxIter)
-        outM = hcat(outM, pM)
-        outU = hcat(outU, pU)
-        outIter = push!(outIter, iter)
-        outMatches[ii] = (mrows, mcols)
-        push!(penalties, penalty)
-        penalty, nabove = next_penalty(mrows, mcols, pM, pU, compsum, penalty, mininc)
+        penalty, nabove = next_penalty(row2col, pM, pU, compsum, penalty, mininc)
 
         #Delete matches that would be excluded by the increased penalty
         w = penalized_weights_vector(pM, pU, compsum, penalty)
-        keep = [w[compsum.obsidx[row, col]] > 0.0 for (row, col) in zip(mrows, mcols)]
-        mrows = mrows[keep]
-        mcols = mcols[keep]
-        pM, pU = max_MU(mrows, mcols, compsum, pseudoM, pseudoU)
+        for row in 1:length(row2col)
+            if !iszero(row2col[row]) && row2col[row] < compsum.ncol
+                if iszero(w[compsum.obsidx[row, row2col[row]]])
+                    row2col[row] = 0
+                end
+            end
+        end
+        pM, pU = max_MU(row2col, compsum, pseudoM, pseudoU)
+
+        row2col, pM, pU, iter = map_solver(pM, pU, compsum, priorM, priorU, penalty, maxIter = maxIter)
+
+        for row in 1:length(row2col)
+            if prevrow2col[row] != row2col[row]
+                #record if deletion or move (not additions)
+                if !iszero(prevrow2col[row])
+                    push!(outrows, row)
+                    push!(outcols, prevrow2col[row])
+                    push!(outstart, startrow2col[row])
+                    push!(outstop, ii - 1)                    
+                end
+                
+                prevrow2col[row] = row2col[row]
+                startrow2col[row] = ii
+            end
+        end
+        
+        outM = hcat(outM, pM)
+        outU = hcat(outU, pU)
+        push!(outLinks, count(.!iszero.(row2col)))
+        outIter = push!(outIter, iter)
+        #outMatches[ii] = copy(row2col)
+        push!(penalties, penalty)
+
+        nabove = count(penalized_weights_vector(pM, pU, compsum, penalty) .> 0.0)
     end
-    return outMatches, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), penalties, outIter
+
+    for row in 1:length(row2col)
+        if !iszero(row2col[row])
+            push!(outrows, row)
+            push!(outcols, prevrow2col[row])
+            push!(outstart, startrow2col[row])
+            push!(outstop, ii)                    
+        end
+    end
+    
+    #return outMatches, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), penalties, outIter
+    return ParameterChain([outrows outcols outstart outstop], outLinks, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), length(outLinks), true), penalties, outIter
 end
 
 """

@@ -58,25 +58,37 @@ end
 function max_C(pM::Array{T, 1},
                pU::Array{T, 1},
                compsum::Union{ComparisonSummary, SparseComparisonSummary},
-               penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+               penalty::AbstractFloat = 0.0;
+               epsiscale::T = T(0.2),
+               minmargin::T = zero(T), digt::Integer = 5) where T <: AbstractFloat
 
-    #assignment algorithm should handle case where nrow > ncol 
-    wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)
-    astate = auction_assignment_padasfr2(wpenalized)[1]
-    keep = astate.r2c .<= compsum.ncol
-    return findall(keep), astate.r2c[keep]
+    wpenalized = penalized_weights_vector(pM, pU, compsum, penalty)
+    weightMat = penalized_weights_matrix(wpenalized, compsum)
+    margin = minimum_margin(wpenalized, minmargin, digt)
+    epsi0 = maximum(wpenalized) * epsiscale
+    epsitol = margin / min(compsum.nrow, compsum.ncol)
+
+    #Solve assignment problem
+    astate = auction_assignment_padasfr2(weightMat, epsi0 = epsi0, epsitol = epsitol)[1]
+    row2col = [col > compsum.ncol ? 0 : col for col in astate.r2c]
+    return row2col
 end
 
 function max_C_cluster(pM::Array{T, 1},
                        pU::Array{T, 1},
                        compsum::Union{ComparisonSummary, SparseComparisonSummary},
                        penalty::AbstractFloat = 0.0;
+                       epsiscale::T = T(0.2),
+                       minmargin::T = zero(T), digt::Integer = 5,
                        verbose::Bool = false) where T <: AbstractFloat
     
     ##Run clustering algorithm to split LSAP
-    wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)
-    rowLabels, colLabels, maxLabel = bipartite_cluster(wpenalized, 0.0)
-
+    wpenalized = penalized_weights_vector(pM, pU, compsum, penalty)
+    weightMat = penalized_weights_matrix(wpenalized, compsum)
+    rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat, 0.0)
+    margin = minimum_margin(wpenalized, minmargin, digt)
+    epsi0 = maximum(wpenalized) * epsiscale
+    
     ##Mark clusters for rows
     block2rows = label2dict(rowLabels)
     block2cols = label2dict(colLabels)
@@ -87,28 +99,33 @@ function max_C_cluster(pM::Array{T, 1},
     end
     
     ##Compute cost matrix
-    rows2cols = zeros(Int64, compsum.nrow)
+    row2col = zeros(Int64, compsum.nrow)
     for kk in 1:maxLabel
 
         if verbose
             println("Cluster: $kk of $maxLabel")
         end
+
+        nrow = length(block2rows[kk])
+        ncol = length(block2cols[kk])
         
         #Matrix should technically already be full here, assuming blocks
-        if length(block2rows[kk]) == 1 && length(block2cols[kk]) == 1
-            rows2cols[block2rows[kk][1]] = block2cols[kk][1]
+        if nrow == 1 && ncol == 1
+            row2col[block2rows[kk][1]] = block2cols[kk][1]
         else
-            astate = auction_assignment_padasfr2(wpenalized[block2rows[kk], block2cols[kk]])[1]
+            epsitol = margin / min(nrow, ncol)
+            
+            #Solve assignment problem
+            astate = auction_assignment_padasfr2(weightMat[block2rows[kk], block2cols[kk]], epsi0 = epsi0, epsitol = epsitol)[1]
             for ridx in 1:astate.nrow
-                if !iszero(astate.r2c[ridx]) && astate.r2c[ridx] < length(block2cols[kk])
-                    rows2cols[block2rows[kk][ridx]] = block2cols[kk][astate.r2c[ridx]]
+                if !iszero(astate.r2c[ridx]) && astate.r2c[ridx] < ncol
+                    row2col[block2rows[kk][ridx]] = block2cols[kk][astate.r2c[ridx]]
                 end
             end
         end
     end
     
-    keep = .!iszero.(rows2cols)
-    return findall(keep), rows2cols[keep]
+    return row2col
 end
 
 """
@@ -133,16 +150,16 @@ function max_C_auction(pM::Array{T, 1},
                        compsum::Union{ComparisonSummary, SparseComparisonSummary},
                        penalty::AbstractFloat = 0.0;
                        lambda0::T = zero(T), epsi0::T = -one(T), epsiscale::T = T(0.2),
-                       minmargin::T = zero(T), digits::Integer = 5) where T <: AbstractFloat
+                       minmargin::T = zero(T), digt::Integer = 5) where T <: AbstractFloat
     #Compute weights
     #wpenalized = penalized_weights_matrix(pM, pU, compsum, penalty)
     w = penalized_weights_vector(pM, pU, compsum, penalty)
     weightMat = weights_matrix(w, compsum)
-
+    #lambda0::T = zero(T), epsi0::T = one(T), epsitol::T = T(one(T) / size(rewardMatrix, 1)), epsiscale::T = T(0.1) 
     #Determine error levels for complete assignment
-    margin = minimum_margin(w, minmargin, digits)
+    margin = minimum_margin(w, minmargin, digt)
     if epsi0 < zero(T)
-        epsi0 = margin * epsiscale
+        epsi0 = maximum(w) * epsiscale
     end
     epsitol = margin / min(compsum.nrow, compsum.ncol)
     #epsitol::T
