@@ -315,14 +315,14 @@ function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Int
     end
     
     #get mapping from components to indicies
-    for (row, lab) in enumerate(IndexLinear(), rowLabels0)
+    for (row, lab) in pairs(IndexLinear(), rowLabels0)
         if !iszero(lab)
             push!(rowIndicies[lab], row)
         end
     end
 
     
-    for (col, lab) in enumerate(IndexLinear(), colLabels0)
+    for (col, lab) in pairs(IndexLinear(), colLabels0)
         if !iszero(lab)
             push!(colIndicies[lab], col)
         end
@@ -339,7 +339,7 @@ function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Int
             #possible results - (1) no clusters, (2) only one smaller cluster, (3) >1 cluster
 
             #update row cluster labels
-            for (idx, row) in enumerate(IndexLinear(), clusterRows)
+            for (idx, row) in pairs(IndexLinear(), clusterRows)
                 if rowLabels[idx] == 0
                     rowLabels0[row] = 0
                 elseif rowLabels[idx] == 1
@@ -350,7 +350,7 @@ function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Int
             end
 
             #update column cluster labels
-            for (idx, col) in enumerate(IndexLinear(), clusterCols)
+            for (idx, col) in pairs(IndexLinear(), clusterCols)
                 if colLabels[idx] == 0
                     colLabels0[col] = 0
                 elseif colLabels[idx] == 1
@@ -412,13 +412,13 @@ function iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::In
     end
     
     #get mapping from components to indicies
-    for (row, lab) in enumerate(IndexLinear(), rowLabels0)
+    for (row, lab) in pairs(IndexLinear(), rowLabels0)
         if !iszero(lab)
             push!(rowIndicies[lab], row)
         end
     end
 
-    for (col, lab) in enumerate(IndexLinear(), colLabels0)
+    for (col, lab) in pairs(IndexLinear(), colLabels0)
         if !iszero(lab)
             push!(colIndicies[lab], col)
         end
