@@ -2,12 +2,12 @@ module BayesianRecordLinkage
 using AssignmentSolver, HDF5
 
 using Distributions: Dirichlet
-using DataStructures: Queue, enqueue!, dequeue!
+using DataStructures: Queue, enqueue!, dequeue!, DefaultDict
 using StatsBase
-using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp
+using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp, logaddexp
 using SparseArrays
 using SpecialFunctions: lfactorial, lbeta
-using Dates: now, format
+using Dates
 import Base: ==
 
 export ComparisonSummary,
@@ -77,7 +77,8 @@ export map_solver,
     map_solver_cluster,
     map_solver_auction,
     map_solver_auction_cluster
-export map_solver_iter,
+export next_penalty,
+    map_solver_iter,
     map_solver_iter_cluster,
     map_solver_search,
     map_solver_search_cluster,

@@ -38,6 +38,10 @@ function dict2keyidx(d::Dict{G, Array{G, 1}}, n::G) where G <: Integer
     return out
 end
 
+function PosthocBlocks(compsum::Union{ComparisonSummary, SparseComparisonSummary})
+    PosthocBlocks(Dict(1 => collect(1:compsum.nrow)), Dict(1 => collect(1:compsum.ncol)), [compsum.nrow], [compsum.ncol], [compsum.nrow == 1 && compsum.ncol == 1], [compsum.npairs], compsum.nrow, compsum.ncol, 1, compsum.npairs)
+end
+
 function PosthocBlocks(cc::ConnectedComponents{G}, compsum::ComparisonSummary) where G <: Integer
     block2rows = label2dict(cc.rowLabels)
     block2cols = label2dict(cc.colLabels)
@@ -47,8 +51,7 @@ function PosthocBlocks(cc::ConnectedComponents{G}, compsum::ComparisonSummary) w
     blocksingleton = [cc.rowcounts[kk + one(G)] == one(G) && cc.colcounts[kk + one(G)] == one(G)  for kk in one(G):cc.ncomponents]
     block2nnz = Int.(cc.rowcounts[2:end]) .* Int.(cc.colcounts[2:end])
     
-    #return PosthocBlocks(block2rows, block2cols, row2blockidx, col2blockidx, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
-    return PosthocBlocks(block2rows, block2cols, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
+    return PosthocBlocks(block2rows, block2cols, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow, cc.ncol, cc.ncomponents, length(compsum.obsidx))
 end
 
 function PosthocBlocks(cc::ConnectedComponents{G}, compsum::SparseComparisonSummary) where G <: Integer
@@ -64,8 +67,8 @@ function PosthocBlocks(cc::ConnectedComponents{G}, compsum::SparseComparisonSumm
             block2nnz[kk] += count(rowvals(compsum.obsidx)[nzrange(compsum.obsidx, col)] .== kk)
         end
     end
-    #return PosthocBlocks(block2rows, block2cols, row2blockidx, col2blockidx, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
-    return PosthocBlocks(block2rows, block2cols, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow. cc.ncol, cc.ncomponents, length(compsum.obsidx))
+
+    return PosthocBlocks(block2rows, block2cols, cc.rowcounts[2:end], cc.colcounts[2:end], blocksingleton, block2nnz, cc.nrow, cc.ncol, cc.ncomponents, length(compsum.obsidx))
 end
 
 function SparseComparisonSummary(compsum::ComparisonSummary{G, T}, phb::PosthocBlocks{A}) where {G <: Integer, T <: Integer, A <: Integer}
