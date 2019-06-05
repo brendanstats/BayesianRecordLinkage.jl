@@ -188,7 +188,7 @@ function maximum_weights_vector(pM::Array{T, 2},
             end
         end
     end
-    weightvec = vec(maximum(weightmat, 2))
+    weightvec = vec(maximum(weightmat, dims=2))
     return weightvec
 end
 
@@ -274,15 +274,14 @@ function penalized_weights_matrix(pweightvec::Array{T, 1}, compsum::SparseCompar
     return sparse(rows[1:ii], cols[1:ii], pweights[1:ii], compsum.nrow, compsum.ncol)
 end
 
-penalized_weights_matrix(weightvec::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::T) where T <: AbstractFloat = penalized_weights_matrix(shrink_weights(weightvec, penalty), compsum)
+penalized_weights_matrix(weightvec::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, penalty::T) where T <: AbstractFloat = penalized_weights_matrix(map(w -> shrink_weights(w, penalty), weightvec), compsum)
 
 
 function penalized_weights_matrix(pM::Array{T, 1},
                                   pU::Array{T, 1},
                                   compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                                  penalty::AbstractFloat = 0.0,
-                                  comps::Array{Int64, 1} = collect(1:compsum.ncomp)) where T <: AbstractFloat
-    weightvec = weights_vector(pM, pU, compsum, comps)
+                                  penalty::AbstractFloat = 0.0) where T <: AbstractFloat
+    weightvec = weights_vector(pM, pU, compsum)
     pweightvec = max.(weightvec .- penalty, 0.0)
     return penalized_weights_matrix(pweightvec, compsum)
 end
