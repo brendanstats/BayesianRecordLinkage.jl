@@ -287,8 +287,8 @@ end
 function randomwalk1_update!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
                              C::LinkMatrix{G},
                              compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                             obsidxCounts::Array{A, 2},
                              loglikRatios::Array{T, 1},
+                             obsidxCounts::Array{A, 2},
                              logpCRatio::Union{Function, Array{T, 1}},
                              log_balance_function::Function = lidentity_balance,
                              loglikMissing::T = -Inf) where {G <: Integer, T <: AbstractFloat, A <: Integer}
@@ -648,8 +648,8 @@ end
 function randomwalk2_update!(rows::Array{<:Integer, 1}, cols::Array{<:Integer, 1},
                              C::LinkMatrix,
                              compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                             obsidxCounts::Array{A, 2},
                              loglikRatios::Array{T, 1},
+                             obsidxCounts::Array{A, 2},
                              logpCRatio::Union{Function, Array{T, 1}},
                              p::AbstractFloat = 0.5,
                              log_balance_function::Function = lidentity_balance,
@@ -712,7 +712,7 @@ end
 function singleton_gibbs!(row::Integer, col::Integer, C::LinkMatrix,
                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
                           loglikRatios::Array{T, 1}, obsidxCounts::Array{G, 2},
-                          logpCRatio::Function,
+                          logpCRatio::Union{Function, Array{T, 1}}, 
                           loglikMissing::T = -T(Inf)) where {G <: Integer, T <: AbstractFloat}
     #logaddexp
     if iszero(C.row2col[row])

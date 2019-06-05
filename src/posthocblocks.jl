@@ -85,5 +85,5 @@ function SparseComparisonSummary(compsum::ComparisonSummary{G, T}, phb::PosthocB
         end
     end
     obsidx = sparse(rows, cols, vals)
-    return SparseComparisonSummary(obsidx, compsum.obsvecs, compsum.obsvecct, compsum.counts, compsum.obsct, compsum..misct, compsum.nlevels, compsum.cmap, compsum.levelmap, compsum.cadj, compsum.nrow, compsum.ncol, compsum.npairs, compsum.ncomp)
+    return SparseComparisonSummary(obsidx, compsum.obsvecs, compsum.obsvecct, compsum.counts, compsum.obsct, compsum.misct, compsum.nlevels, compsum.cmap, compsum.levelmap, compsum.cadj, compsum.nrow, compsum.ncol, compsum.npairs, compsum.ncomp)
 end
