@@ -16,9 +16,6 @@ function dropoutside!(compsum::SparseComparisonSummary{G, Tv, Ti}, cc::Connected
     return compsum
 end
 
-#    block2rows::Dict{G, Array{G, 1}},
-#    block2cols::Dict{G, Array{G, 1}},
-
 function mh_gibbs_count(
     nsteps::Integer,
     C0::LinkMatrix,
@@ -32,10 +29,6 @@ function mh_gibbs_count(
     
     #MCMC Chains
     CArray = spzeros(Int, C0.nrow, C0.ncol)
-
-    #nblocks = maximum(keys(block2rows))
-    #blockRows = map(x -> length(block2rows[x]), 1:nblocks)
-    #blockCols = map(x -> length(block2cols[x]), 1:nblocks)
     nlinkArray = Array{Int}(undef, nsteps)
     MArray = Array{Float64}(undef, length(priorM), nsteps)
     UArray = Array{Float64}(undef, length(priorU), nsteps)
@@ -63,19 +56,6 @@ function mh_gibbs_count(
                 transC[kk] += 1
                 matchcounts += countdelta
             end
-            #println("step: $ii")
-            #println("move: $move")
-            #println(C.row2col)
-            
-            #if matchcounts != counts_matches(C, compsum)[1]
-            #    println("step: $ii")
-            #    println("move: $move")
-            #    println("nlinks: $(C.nlink)")
-            #    println("links trace: $(nlinkArray[ii - 1])")
-            #    println("matchcounts: $matchcounts")
-            #    println("$(matchcounts - counts_matches(C, compsum)[1])")
-            #    error("matchcounts off")
-            #end
         end #end block loop
 
         ##Perform Gibbs update if performed with outer iterations
@@ -91,7 +71,6 @@ function mh_gibbs_count(
         MArray[:, ii] = pM
         UArray[:, ii] = pU
     end
-    #return CArray, nlinkArray, MArray', UArray', transC, C
     ParameterChain(counts2indicies(CArray), nlinkArray, permutedims(MArray, [2, 1]), permutedims(UArray, [2, 1]), nsteps, false), transC, C
 end
 
@@ -105,8 +84,6 @@ function mh_gibbs_trace(
     logpCRatio::Union{Function, Array{<:AbstractFloat, 1}},
     transitionC!::Function,
     loglikMissing::AbstractFloat = -Inf) where {G <: Integer, T <: Real}
-
-    #priorType::String = "base"
     
     #MCMC Chains
     outrows = Int[]
@@ -114,9 +91,6 @@ function mh_gibbs_trace(
     outstart = Int[]
     outstop = Int[]
     
-    #nblocks = maximum(keys(block2rows))
-    #blockRows = map(x -> length(block2rows[x]), 1:nblocks)
-    #blockCols = map(x -> length(block2cols[x]), 1:nblocks)
     nlinkArray = Array{Int64}(undef, nsteps)
     MArray = Array{Float64}(undef, length(priorM), nsteps)
     UArray = Array{Float64}(undef, length(priorU), nsteps)
@@ -183,6 +157,5 @@ function mh_gibbs_trace(
         end
     end
     
-    #return CArray, nlinkArray, MArray', UArray', transC, C
     ParameterChain([outrows outcols outstart outstop][outstart .<= outstop, :], nlinkArray, permutedims(MArray, [2, 1]), permutedims(UArray, [2, 1]), nsteps, true), transC, C
 end
