@@ -711,7 +711,7 @@ end
 """
 function singleton_gibbs!(row::Integer, col::Integer, C::LinkMatrix,
                           compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                          obsidxCounts::Array{G, 2}, loglikRatios::Array{T, 1},
+                          loglikRatios::Array{T, 1}, obsidxCounts::Array{G, 2},
                           logpCRatio::Function,
                           loglikMissing::T = -T(Inf)) where {G <: Integer, T <: AbstractFloat}
     #logaddexp
@@ -720,19 +720,23 @@ function singleton_gibbs!(row::Integer, col::Integer, C::LinkMatrix,
         if rand() < exp(loglik - logaddexp(loglik, 1.0))
             countsdelta = counts_add(row, col, C, compsum, obsidxCounts)
             add_link!(row, col, C)
+            move = true
         else
             countsdelta = zeros(G, size(obsidxCounts, 1))
+            move = false
         end
     else
         loglik = loglik_remove(row, col, C, compsum, loglikRatios, loglikMissing) + logpCRatios_remove(C, logpCRatio)
-        if  exp(loglik - logaddexp(loglik, 1.0))
+        if rand() < exp(loglik - logaddexp(loglik, 1.0))
             countsdelta = counts_remove(row, col, C, compsum, obsidxCounts)
             remove_link!(row, col, C)
+            move = true
         else
             countsdelta = zeros(G, size(obsidxCounts, 1))
+            move = false
         end
     end
-    return C, countsdelta, true
+    return C, countsdelta, move
 end
 
 """

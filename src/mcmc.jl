@@ -16,12 +16,14 @@ function dropoutside!(compsum::SparseComparisonSummary{G, Tv, Ti}, cc::Connected
     return compsum
 end
 
+#    block2rows::Dict{G, Array{G, 1}},
+#    block2cols::Dict{G, Array{G, 1}},
+
 function mh_gibbs_count(
     nsteps::Integer,
     C0::LinkMatrix,
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    block2rows::Dict{G, Array{G, 1}},
-    block2cols::Dict{G, Array{G, 1}},
+    phb::PosthocBlocks{G},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
     logpCRatio::Union{Function, Array{<:AbstractFloat, 1}},
@@ -31,13 +33,13 @@ function mh_gibbs_count(
     #MCMC Chains
     CArray = spzeros(Int, C0.nrow, C0.ncol)
 
-    nblocks = length(keys(block2rows))
-    blockRows = map(x -> length(block2rows[x]), 1:nblocks)
-    blockCols = map(x -> length(block2cols[x]), 1:nblocks)
+    #nblocks = maximum(keys(block2rows))
+    #blockRows = map(x -> length(block2rows[x]), 1:nblocks)
+    #blockCols = map(x -> length(block2cols[x]), 1:nblocks)
     nlinkArray = Array{Int}(undef, nsteps)
     MArray = Array{Float64}(undef, length(priorM), nsteps)
     UArray = Array{Float64}(undef, length(priorU), nsteps)
-    transC = zeros(Int64, nblocks)
+    transC = zeros(Int64, phb.nblock)
     
     ##Initial States
     countDeltas = counts_delta(compsum) #each column is an observation
@@ -49,13 +51,13 @@ function mh_gibbs_count(
     for ii in 1:nsteps
 
         #Loop over blocks
-        for kk in 1:nblocks
+        for kk in 1:phb.nblock
             move = false
             countdelta = zeros(eltype(matchcounts), length(matchcounts))
-            if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
+            if (phb.blocknrows[kk] == 1) && (phb.blockncols[kk] == 1)
+                C, countdelta, move = singleton_gibbs!(phb.block2rows[kk][1], phb.block2cols[kk][1], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             else
-                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
+                C, countdelta, move = transitionC!(phb.block2rows[kk], phb.block2cols[kk], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             end
             if move
                 transC[kk] += 1
@@ -97,8 +99,7 @@ function mh_gibbs_trace(
     nsteps::Integer,
     C0::LinkMatrix,
     compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    block2rows::Dict{G, Array{G, 1}},
-    block2cols::Dict{G, Array{G, 1}},
+    phb::PosthocBlocks{G},
     priorM::Array{T, 1},
     priorU::Array{T, 1},
     logpCRatio::Union{Function, Array{<:AbstractFloat, 1}},
@@ -113,13 +114,13 @@ function mh_gibbs_trace(
     outstart = Int[]
     outstop = Int[]
     
-    nblocks = length(keys(block2rows))
-    blockRows = map(x -> length(block2rows[x]), 1:nblocks)
-    blockCols = map(x -> length(block2cols[x]), 1:nblocks)
+    #nblocks = maximum(keys(block2rows))
+    #blockRows = map(x -> length(block2rows[x]), 1:nblocks)
+    #blockCols = map(x -> length(block2cols[x]), 1:nblocks)
     nlinkArray = Array{Int64}(undef, nsteps)
     MArray = Array{Float64}(undef, length(priorM), nsteps)
     UArray = Array{Float64}(undef, length(priorU), nsteps)
-    transC = zeros(Int64, nblocks)
+    transC = zeros(Int64, phb.nblock)
     
     ##Initial States
     countDeltas = counts_delta(compsum) #each column is an observation
@@ -134,13 +135,13 @@ function mh_gibbs_trace(
     for ii in 1:nsteps
 
         #Loop over blocks
-        for kk in 1:nblocks
+        for kk in 1:phb.nblock
             move = false
             countdelta = zeros(eltype(matchcounts), length(matchcounts))
-            if (blockRows[kk] == 1) && (blockCols[kk] == 1)
-                C, countdelta, move = singleton_gibbs!(block2rows[kk][1], block2cols[kk][1], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
+            if (phb.blocknrows[kk] == 1) && (phb.blockncols[kk] == 1)
+                C, countdelta, move = singleton_gibbs!(phb.block2rows[kk][1], phb.block2cols[kk][1], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             else
-                C, countdelta, move = transitionC!(block2rows[kk], block2cols[kk], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
+                C, countdelta, move = transitionC!(phb.block2rows[kk], phb.block2cols[kk], C, compsum, loglikRatios, countDeltas, logpCRatio, loglikMissing)
             end
             if move
                 transC[kk] += 1
@@ -183,5 +184,5 @@ function mh_gibbs_trace(
     end
     
     #return CArray, nlinkArray, MArray', UArray', transC, C
-    ParameterChain([outrows outcols outstart outstop][outstart .<= outstop, :], nlinkArray, permutedims(MArray, [2, 1]), permutedims(UArray, [2, 1]), nsteps, false), transC, C
+    ParameterChain([outrows outcols outstart outstop][outstart .<= outstop, :], nlinkArray, permutedims(MArray, [2, 1]), permutedims(UArray, [2, 1]), nsteps, true), transC, C
 end
