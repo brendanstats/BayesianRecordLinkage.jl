@@ -4,49 +4,47 @@
 ####################
 
 """
-    f(x::Type)
+    exppenalty_prior(nlink::Integer, θ::Real)
+    exppenalty_prior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real)
+    exppenalty_prior(C::LinkMatrix, θ::Real)
 
-### Arguments
+Prior which applies an exponential penalty based on the number of links returning exp(-nlink * θ)
 
-* `var` : brief description
+Based on Green and Mardia "Bayesian alignment using hierarchical models, with applications in protein bioinformatics" (2007).
+Return values is not normalized.
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`exppenalty_logprior`](@ref), [`exppenalty_ratio`](@ref), [`exppenalty_logratio`](@ref), [`exppenalty_ratiopn`](@ref), [`exppenalty_logratiopn`](@ref)
 """
 exppenalty_prior(nlink::Integer, θ::Real) = exp(-θ * nlink)
 exppenalty_prior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = exp(-θ * nlink)
 exppenalty_prior(C::LinkMatrix, θ::Real) = exppenalty_prior(C.nlink, θ)
 
 """
-    f(x::Type)
+    exppenalty_logprior(nlink::Integer, θ::Real)
+    exppenalty_logprior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real)
+    exppenalty_logprior(C::LinkMatrix, θ::Real)
 
-### Arguments
+Prior which applies an exponential penalty based on the number of links returning exp(-nlink * θ), result in logspace.
 
-* `var` : brief description
+Based on Green and Mardia "Bayesian alignment using hierarchical models, with applications in protein bioinformatics" (2007).
+Return values is not normalized.
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`exppenalty_prior`](@ref), [`exppenalty_ratio`](@ref), [`exppenalty_logratio`](@ref), [`exppenalty_ratiopn`](@ref), [`exppenalty_logratiopn`](@ref)
 """
 exppenalty_logprior(nlink::Integer, θ::Real) = -θ * nlink
 exppenalty_logprior(nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = -θ * nlink
 exppenalty_logprior(C::LinkMatrix, θ::Real) = exppenalty_logprior(C.nlink, θ)
 
 """
-p(C1) / P(C2)
+    exppenalty_ratio(nlink1::Integer, nlink2::Integer, θ::Real)
+    exppenalty_ratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, θ::Real)
+    exppenalty_ratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
+
+Returns P(C1) / P(C2) for exponential penalty prior.
+
+Based on Green and Mardia "Bayesian alignment using hierarchical models, with applications in protein bioinformatics" (2007).
+
+See also: [`exppenalty_prior`](@ref), [`exppenalty_logprior`](@ref), [`exppenalty_logratio`](@ref), [`exppenalty_ratiopn`](@ref), [`exppenalty_logratiopn`](@ref)
 """
 function exppenalty_ratio(nlink1::Integer, nlink2::Integer, θ::Real)
     if nlink1 == nlink2
@@ -65,7 +63,15 @@ function exppenalty_ratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
 end
 
 """
-log(P(C with L2 links) / P(C with L1 links))
+    exppenalty_logratio(nlink1::Integer, nlink2::Integer, θ::Real)
+    exppenalty_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, θ::Real)
+    exppenalty_logratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
+
+Returns log(P(C1) / P(C2)) for exponential penalty prior.
+
+Based on Green and Mardia "Bayesian alignment using hierarchical models, with applications in protein bioinformatics" (2007).
+
+See also: [`exppenalty_prior`](@ref), [`exppenalty_logprior`](@ref), [`exppenalty_ratio`](@ref), [`exppenalty_logratio`](@ref), [`exppenalty_ratiopn`](@ref), [`exppenalty_logratiopn`](@ref)
 """
 function exppenalty_logratio(nlink1::Integer, nlink2::Integer, θ::Real)
     if nlink1 == nlink2
@@ -85,14 +91,30 @@ function exppenalty_logratio(C1::LinkMatrix, C2::LinkMatrix, θ::Real)
 end
 
 """
-P(C with L + n links) / P(C with L links)
+    exppenalty_ratiopn(nadd::Integer, nlink::Integer, θ::Real)
+    exppenalty_ratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, θ::Real)
+    exppenalty_ratiopn(nadd::Integer, C::LinkMatrix, θ::Real)
+
+P(C with L + n links) / P(C with L links) for exponential penalty prior.
+
+Based on Green and Mardia "Bayesian alignment using hierarchical models, with applications in protein bioinformatics" (2007).
+
+See also: [`exppenalty_prior`](@ref), [`exppenalty_logprior`](@ref), [`exppenalty_ratio`](@ref), [`exppenalty_logratio`](@ref), [`exppenalty_ratiopn`](@ref), [`exppenalty_logratiopn`](@ref)
 """
 exppenalty_ratiopn(nadd::Integer, nlink::Integer, θ::Real) = exp(-θ * nadd)
 exppenalty_ratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = exp(-θ * nadd)
 exppenalty_ratiopn(nadd::Integer, C::LinkMatrix, θ::Real) = exp(-θ * nadd)
 
 """
-log(P(C with L + n links) / P(C with L links))
+    exppenalty_logratiopn(nadd::Integer, nlink::Integer, θ::Real)
+    exppenalty_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, θ::Real)
+    exppenalty_logratiopn(nadd::Integer, C::LinkMatrix, θ::Real)
+
+log(P(C with L + n links) / P(C with L links)) for exponential penalty prior.
+
+Based on Green and Mardia "Bayesian alignment using hierarchical models, with applications in protein bioinformatics" (2007)
+
+See also: [`exppenalty_prior`](@ref), [`exppenalty_logprior`](@ref), [`exppenalty_ratio`](@ref), [`exppenalty_logratio`](@ref), [`exppenalty_ratiopn`](@ref), [`exppenalty_logratiopn`](@ref)
 """
 exppenalty_logratiopn(nadd::Integer, nlink::Integer, θ::Real) = -θ * nadd
 exppenalty_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, θ::Real) = -θ * nadd
@@ -103,21 +125,14 @@ exppenalty_logratiopn(nadd::Integer, C::LinkMatrix, θ::Real) = -θ * nadd
 ####################
 
 """
-    f(x::Type)
+    betabipartite_prior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
+    betabipartite_prior(C::LinkMatrix, α::Real, β::Real)
 
-### Arguments
+Density for beta distribution for bipartite matchings.
 
-* `var` : brief description
+Terminology taken from Sadinle "Bayesian Estimation of Bipartite Matchings for Record Linkage" (2017).
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`betabipartite_logprior`](@ref), [`betabipartite_ratio`](@ref), [`betabipartite_logratio`](@ref), [`betabipartite_ratiopn`](@ref), [`betabipartite_logratiopn`](@ref)
 """
 function betabipartite_prior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     return nrow >= ncol ? prod(nlink + 1:nrow) * beta(nlink + α, ncol - nlink + β) / beta(α, β) : prod(nlink + 1:ncol) * beta(nlink + α, nrow - nlink + β) / beta(α, β)
@@ -126,21 +141,14 @@ end
 betabipartite_prior(C::LinkMatrix, α::Real, β::Real) = betabipartite_prior(nlink, nrow, ncol, α, β)
 
 """
-    f(x::Type)
+    betabipartite_logprior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
+    betabipartite_logprior(C::LinkMatrix, α::Real, β::Real)
 
-### Arguments
+Log density for beta distribution for bipartite matchings.
 
-* `var` : brief description
+Terminology taken from Sadinle "Bayesian Estimation of Bipartite Matchings for Record Linkage" (2017).
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`betabipartite_prior`](@ref), [`betabipartite_ratio`](@ref), [`betabipartite_logratio`](@ref), [`betabipartite_ratiopn`](@ref), [`betabipartite_logratiopn`](@ref)
 """
 function betabipartite_logprior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     nrow >= ncol ? lfactorial(nrow - nlink) - lfactorial(nrow) +  lbeta(nlink + α, ncol - nlink + β) - lbeta(α, β) : lfactorial(ncol - nlink) - lfactorial(ncol) + lbeta(nlink + α, nrow - nlink + β) - lbeta(α, β)
@@ -149,21 +157,14 @@ end
 betabipartite_logprior(C::LinkMatrix, α::Real, β::Real) = betabipartite_logprior(C.nlink, C.nrow, C.ncol, α, β)
 
 """
-    f(x::Type)
+    betabipartite_ratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
+    betabipartite_ratio(C1::LinkMatrix, C2::LinkMatrix, α::Real, β::Real)
 
-### Arguments
+Ratio of beta distribution for bipartite matchings, equivalent to `betabipartite_prior(C1) / betabipartite_prior(C2)`.
 
-* `var` : brief description
+Terminology taken from Sadinle "Bayesian Estimation of Bipartite Matchings for Record Linkage" (2017).
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`betabipartite_prior`](@ref), [`betabipartite_logprior`](@ref), [`betabipartite_logratio`](@ref), [`betabipartite_ratiopn`](@ref), [`betabipartite_logratiopn`](@ref)
 """
 function betabipartite_ratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nlink1 == nlink2
@@ -181,59 +182,29 @@ function betabipartite_ratio(C1::LinkMatrix, C2::LinkMatrix, α::Real, β::Real)
     end
     return betabipartite_ratio(C1.nlink, C2.nlink, C1.nrow, C1.ncol, α, β)
 end
-#    if C1.nlink == C2.nlink
-#        return 1.0
-#    elseif C1.nlink > C2.nlink #adjust first term in ratio
-#        if C1.nrow >= C1.ncol
-#            return prod((C1.nrow - C1.nlink):(C2.nrow - C2.nlink))^-1 * beta(C1.nlink + α, C1.ncol - C1.nlink + β) / beta(C2.nlink + α, C2.ncol - C2.nlink + β)
-#        else
-#            return prod((C1.ncol - C1.nlink):(C2.ncol - C2.nlink))^-1 * beta(C1.nlink + α, C1.nrow - C1.nlink + β) / beta(C2.nlink + α, C2.nrow - C2.nlink + β)
-#        end
-#    else #C1.nlink < C2.nlink
-#        if C1.nrow >= C1.ncol
-#            return prod((C2.nrow - C2.nlink):(C1.nrow - C1.nlink)) * beta(C1.nlink + α, C1.ncol - C1.nlink + β) / beta(C2.nlink + α, C2.ncol - C2.nlink + β)
-#        else
-#            return prod((C2.ncol - C2.nlink):(C1.ncol - C1.nlink)) * beta(C1.nlink + α, C1.nrow - C1.nlink + β) / beta(C2.nlink + α, C2.nrow - C2.nlink + β)
-#        end
-#    end
-#end
 
 """
-    f(x::Type)
+    betabipartite_ratio(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
+    betabipartite_ratio(C1::LinkMatrix, C::LinkMatrix, α::Real, β::Real)
 
-### Arguments
+Ratio of beta distribution for bipartite matchings, equivalent to `betabipartite_prior(C1) / betabipartite_prior(C2)`.
 
-* `var` : brief description
+Terminology taken from Sadinle "Bayesian Estimation of Bipartite Matchings for Record Linkage" (2017).
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`betabipartite_prior`](@ref), [`betabipartite_logprior`](@ref), [`betabipartite_ratio`](@ref), [`betabipartite_logratio`](@ref), [`betabipartite_logratiopn`](@ref)
 """
 betabipartite_ratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real) = exp(betabipartite_logratiopn(nadd, nlink, nrow, ncol, α, β))
-betabipartite_ratiopn(nadd::Integer, C::LinkMatrix, nrow::Integer, ncol::Integer, α::Real, β::Real) = exp(betabipartite_logratiopn(nadd, C.nlink, nrow, ncol, α, β))
+betabipartite_ratiopn(nadd::Integer, C::LinkMatrix, α::Real, β::Real) = exp(betabipartite_logratiopn(nadd, C.nlink, C.nrow, C.ncol, α, β))
 
 """
-    f(x::Type)
+    betabipartite_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
+    betabipartite_logratio(C1::LinkMatrix, C2::LinkMatrix, α::Real, β::Real)
 
-### Arguments
+Log ratio of beta distribution for bipartite matchings densities, equivalent to `betabipartite_logprior(C1) - betabipartite_logprior(C2)`.
 
-* `var` : brief description
+Terminology taken from Sadinle "Bayesian Estimation of Bipartite Matchings for Record Linkage" (2017).
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`betabipartite_prior`](@ref), [`betabipartite_logprior`](@ref), [`betabipartite_ratio`](@ref), [`betabipartite_ratiopn`](@ref), [`betabipartite_logratiopn`](@ref)
 """
 function betabipartite_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nlink1 == nlink2
@@ -249,33 +220,16 @@ function betabipartite_logratio(C1::LinkMatrix, C2::LinkMatrix, α::Real, β::Re
     end
     return betabipartite_logratio(C1.nlink, C2.nlink, C1.nrow, C1.ncol, α, β)
 end
-#    if C1.nlink == C2.nlink
-#        return 0.0
-#    else
-#        if  C1.nrow >= C1.ncol
-#            return lfactorial(C1.nrow - C1.nlink) - lfactorial(C2.nrow - C2.nlink) + lbeta(C1.nlink + α, C1.ncol - C1.nlink + β) - lbeta(C2.nlink + α, C2.ncol - C2.nlink + β)
-#        else
-#            return lfactorial(C1.ncol - C1.nlink) - lfactorial(C2.ncol - C2.nlink) + lbeta(C1.nlink + α, C1.nrow - C1.nlink + β) - lbeta(C2.nlink + α, C2.nrow - C2.nlink + β)
-#        end
-#    end
-#end
 
 """
-    f(x::Type)
+    betabipartite_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
+    betabipartite_logratiopn(nadd::Integer, C::LinkMatrix, α::Real, β::Real)
 
-### Arguments
+Log ratio of beta distribution for bipartite matchings densities, equivalent to `betabipartite_logprior(C with nadd more links) - betabipartite_logprior(C)`.
 
-* `var` : brief description
+Terminology taken from Sadinle "Bayesian Estimation of Bipartite Matchings for Record Linkage" (2017).
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`betabipartite_prior`](@ref), [`betabipartite_logprior`](@ref), [`betabipartite_ratio`](@ref), [`betabipartite_logratio`](@ref), [`betabipartite_ratiopn`](@ref)
 """
 function betabipartite_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
     if nadd == 0

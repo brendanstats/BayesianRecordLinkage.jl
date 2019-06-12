@@ -1,9 +1,16 @@
 """
-bipartite_cluster(linkArray) -> rowLabels, columnLabels, maxLabel
+    bipartite_cluster(linkArray::A) where A <: AbstractArray{Bool, 2} -> rowLabels, columnLabels, maxLabel
+    bipartite_cluster(weightArray::Array{<:AbstractFloat, 2}, threshold::AbstractFloat = 0.0) -> rowLabels, columnLabels, maxLabel
+    bipartite_cluster(linkArray::A) where A <: SparseMatrixCSC{Bool} -> rowLabels, columnLabels, maxLabel
+    bipartite_cluster(linkArray::SparseMatrixCSC{T}, threshold::T) where T <: AbstractFloat -> rowLabels, columnLabels, maxLabel
 
-Finds the connected components taking a binary edge matrix for a bipartite graph
-and labeles all components.  Nodes that are connected to no other nodes are left
-with a label of 0.
+Finds the connected components for a bipartite graph using depth first search.
+
+If a boolean matrix is supplied all entries of true are used as edges.  If float
+then only entries with edge weight > threshold are used to connect components.
+ For sparse matricies zero (not recorded) entries are ignored even if thedhold < 0.
+Nodes that are connected to no other nodes are left with a label of 0.
+Threshold value defaults to 0.
 """
 function bipartite_cluster(linkArray::A) where A <: AbstractArray{Bool, 2}
     n, m = size(linkArray)
@@ -70,14 +77,6 @@ function bipartite_cluster(linkArray::A) where A <: AbstractArray{Bool, 2}
     return rowLabels, colLabels, maxLabel
 end
 
-"""
-bipartite_cluster(weightArray, [threshold]) -> rowLabels, columnLabels, maxLabel
-
-Finds the connected components taking a matrix of edge weights and a threshold
-for a bipartite graph and labeles all components.  All edge weights above the
-threshold are used to connect components.  Nodes that are connected to no other
-nodes are left with a label of 0.  Threshold value defaults to 0.
-"""
 function bipartite_cluster(weightArray::Array{<:AbstractFloat, 2}, threshold::AbstractFloat = 0.0)
     n, m = size(weightArray)
     rowLabels = zeros(Int64, n)
@@ -280,27 +279,21 @@ function bipartite_cluster(linkArray::SparseMatrixCSC{T}, threshold::T) where T 
     return rowLabels, colLabels, maxLabel
 end
 
-#iterative_bipartite_cluster(sparse([4.0 3. 3. 2. 2.; 3. 4. 3. 2. 2.; 3. 3. 4. 2. 2.; 2. 2. 2. 3. 1.; 2. 2. 2. 1. 3.]), 4, 1.1, 0.5)
-#iterative_bipartite_cluster(sparse([4.0 3. 3. 1. 1.; 3. 4. 3. 1. 1.; 3. 3. 4. 1. 1.; 1. 1. 1. 3. 2.; 1. 1. 1. 2. 3.]), 4, 1.1, 0.5)
-
 """
-    f(x::Type)
+    iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Integer, threshold0::T, incr::T,
+                                rows::Array{<:Integer, 1} = collect(1:size(linkArray, 1)),
+                                cols::Array{<:Integer, 1} = collect(1:size(linkArray, 2))) where T <: AbstractFloat
 
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
+# Examples
 
 ```julia
-
+iterative_bipartite_cluster(sparse([4.0 3. 3. 2. 2.; 3. 4. 3. 2. 2.; 3. 3. 4. 2. 2.; 2. 2. 2. 3. 1.; 2. 2. 2. 1. 3.]), 4, 1.1, 0.5)
+iterative_bipartite_cluster(sparse([4.0 3. 3. 1. 1.; 3. 4. 3. 1. 1.; 3. 3. 4. 1. 1.; 1. 1. 1. 3. 2.; 1. 1. 1. 2. 3.]), 4, 1.1, 0.5)
 ```
 """
-function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Integer, threshold0::T, incr::T, rows::Array{Int64, 1} = collect(1:size(linkArray, 1)), cols::Array{Int64, 1} = collect(1:size(linkArray, 2))) where T <: AbstractFloat
+function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Integer, threshold0::T, incr::T,
+                                     rows::Array{<:Integer, 1} = collect(1:size(linkArray, 1)),
+                                     cols::Array{<:Integer, 1} = collect(1:size(linkArray, 2))) where T <: AbstractFloat
 
     #run with initial clustering
     rowLabels0, colLabels0, maxLabel0 = bipartite_cluster(linkArray[rows, cols], threshold0)
@@ -376,25 +369,22 @@ function iterative_bipartite_cluster(linkArray::SparseMatrixCSC{T}, maxsize::Int
     return rowLabels0, colLabels0, maxLabel0, clusterThresholds0
 end
 
-#iterative_bipartite_cluster2(sparse([4. 3. 3. 2. 2.; 3. 4. 3. 2. 2.; 3. 3. 4. 2. 2.; 2. 2. 2. 3. 1.; 2. 2. 2. 1. 3.]), 4, 1.1, 0.5)
-#iterative_bipartite_cluster2(sparse([4. 3. 3. 1. 1.; 3. 4. 3. 1. 1.; 3. 3. 4. 1. 1.; 1. 1. 1. 3. 2.; 1. 1. 1. 2. 3.]), 4, 1.1, 0.5)
-#iterative_bipartite_cluster2(sparse([4. 4. 4. 1. ; 4. 4. 4. 1. ; 4. 4. 4. 1.; 1. 1. 1. 2.]), 4, 1.1, 0.5)
-
 """
-    f(x::Type)
+    iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::Integer, threshold0::T, incr::T) where T <: AbstractFloat
 
-### Arguments
+# Arguments
 
-* `var` : brief description
+* `linkArray::SparseMatrixCSC{T}`
+* `maxsize::Integer`: maximum size of retained components, as measured by (#rows) * (#columns).
+* `threshold0::T`: Starting clustering threshold.
+* `incr::T`: Threshold increment, amount threshold is increased if comonpent is larger than `maxsize`.
 
-### Details
-
-### Value
-
-### Examples
+# Examples
 
 ```julia
-
+iterative_bipartite_cluster2(sparse([4. 3. 3. 2. 2.; 3. 4. 3. 2. 2.; 3. 3. 4. 2. 2.; 2. 2. 2. 3. 1.; 2. 2. 2. 1. 3.]), 4, 1.1, 0.5)
+iterative_bipartite_cluster2(sparse([4. 3. 3. 1. 1.; 3. 4. 3. 1. 1.; 3. 3. 4. 1. 1.; 1. 1. 1. 3. 2.; 1. 1. 1. 2. 3.]), 4, 1.1, 0.5)
+iterative_bipartite_cluster2(sparse([4. 4. 4. 1. ; 4. 4. 4. 1. ; 4. 4. 4. 1.; 1. 1. 1. 2.]), 4, 1.1, 0.5)
 ```
 """
 function iterative_bipartite_cluster2(linkArray::SparseMatrixCSC{T}, maxsize::Integer, threshold0::T, incr::T) where T <: AbstractFloat

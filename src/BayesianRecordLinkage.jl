@@ -4,7 +4,7 @@ using AssignmentSolver, HDF5
 using Distributions: Dirichlet
 using DataStructures: Queue, enqueue!, dequeue!, DefaultDict
 using StatsBase
-using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, logsumexp, logaddexp
+using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, softmax!, logsumexp, logaddexp
 using SparseArrays
 using SpecialFunctions: lfactorial, lbeta
 using Dates
@@ -16,8 +16,8 @@ export ComparisonSummary,
     comparison_variables,
     count_variables,
     merge_comparisonsummary,
-    counts_delta,
-    obs_delta
+    get_obsidxcounts,
+    get_obsidxobs
 export ConnectedComponents,
     get_component,
     get_ranges,
@@ -91,7 +91,17 @@ export exppenalty_logprior,
     betabipartite_logratio,
     exppenalty_logratiopn,
     betabipartite_logratiopn
-export identity_balance, lidentity_balance, sqrt_balance, lsqrt_balance, barker_balance, lbarker_balance
+export lsqrt,
+    lsqrt_logx,
+    lbarker,
+    barker_logx,
+    barker,
+    lmin1,
+    min1_logx,
+    min1,
+    lmax1,
+    max1_logx,
+    max1
 export idx2pair,
     pair2idx,
     sample_proposal_full,
@@ -130,7 +140,7 @@ export idx2pair,
     singleton_gibbs!,
     dirichlet_draw,
     gibbs_MU_draw
-export dropoutside!, mh_gibbs_count, mh_gibbs_trace
+export dropoutside!, dropoutside, mh_gibbs_count, mh_gibbs_trace
 export h5write_ComparisonSummary,
     h5read_ComparisonSummary,
     h5write_SparseComparisonSummary,

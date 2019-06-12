@@ -1,189 +1,99 @@
-####################
-#identity (globally)
-####################
-
-#logs
 """
-    lidentity_balance(loglikMargin::AbstractFloat)
-    lidentity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1})
-    lidentity_balance(loglikMargin::AbstractFloat, nadd::Integer, C::LinkMatrix, logpdfC::Function)
-    lidentity_balance(loglikMargin::AbstractFloat, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool)
-    lidentity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool)
-### Arguments
+    lsqrt(logx::AbstractFloat)
 
-* `var` : brief description
+Compute log(sqrt(x)) fomr log(x).
 
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`lbarker`](@ref), [`lmin1`](@ref), [`lmax1`](@ref), [`sqrt_logx`](@ref), [`sqrt`](@ref)
 """
-lidentity_balance(loglikMargin::AbstractFloat) = loglikMargin
-lidentity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}) = dot(delta, logDiff)
+lsqrt(logx::AbstractFloat) = 0.5 * logx
 
-lidentity_balance(loglikMargin::AbstractFloat, nadd::Integer, C::LinkMatrix, logpdfC::Function) =
-    loglikMargin + logpdfC(nadd, C)
-
-function lidentity_balance(loglikMargin::AbstractFloat, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool)
-    return ratioPrior ? (loglikMargin + logpdfC(propC, C)) : (loglikMargin + logpdfC(propC) - logpdf(C))
-end
-
-function lidentity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, nadd::Integer, C::LinkMatrix, logpdfC::Function)
-    return dot(delta, logDiff) + logpdfC(nadd, C)
-end
-
-function lidentity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool)
-    return ratioPrior ? (dot(delta, logDiff) + logpdfC(propC, C)) : (dot(delta, logDiff) + logpdfC(propC) - logpdf(C))
-end
-
-#base
 
 """
-    f(x::Type)
+    sqrt_logx(logx::AbstractFloat) = exp(0.5 * logx)
 
-### Arguments
+Compute sqrt(x) from log(x).
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`lbarker_logx`](@ref), [`lmin1_logx`](@ref), [`lmax1_logx`](@ref), [`lsqrt`](@ref), [`sqrt`](@ref)
 """
-identity_balance(loglikMargin::AbstractFloat) = exp(loglikMargin)
-identity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}) = exp(dot(delta, logDiff))
-identity_balance(loglikMargin::AbstractFloat, nadd::Integer, C::LinkMatrix, logpdfC::Function) =
-    exp(lidentity_balance(loglikMargin, nadd, C, logpdfC))
-identity_balance(loglikMargin::AbstractFloat, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) =
-    exp(lidentity_balance(loglikMargin, propC, C, logpdfC, ratioPrior))
-identity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, nadd::Integer, C::LinkMatrix, logpdfC::Function) = exp(lidentity_balance(delta, logDiff, nadd, C, logpdfC))
-identity_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) = exp(lidentity_balance(delta, logDiff, propC, C, logpdfC, ratioPrior))
-
-####################
-#sqrt
-####################
-
-#logs
-"""
-    f(x::Type)
-
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
-"""
-lsqrt_balance(loglikMargin::AbstractFloat) = 0.5 * loglikMargin
-lsqrt_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}) = 0.5 * dot(delta, logDiff)
-lsqrt_balance(loglikMargin::AbstractFloat, nadd::Integer, C::LinkMatrix, logpdfC::Function) =
-    0.5 * lidentity_balance(loglikMargin, nadd, C, logpdfC)
-lsqrt_balance(loglikMargin::AbstractFloat, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) =
-    0.5 * lidentity_balance(loglikMargin, propC, C, logpdfC, ratioPrior)
-lsqrt_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, nadd::Integer, C::LinkMatrix, logpdfC::Function) = 0.5 * lidentity_balance(delta, logDiff, nadd, C, logpdfC)
-lsqrt_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) = 0.5 * lidentity_balance(delta, logDiff, propC, C, logpdfC, ratioPrior)
+sqrt_logx(logx::AbstractFloat) = exp(lsqrt(logx))
 
 """
-    f(x::Type)
+    lbarker(logx::AbstractFloat)
 
-### Arguments
+Compute log(x / (1 + x)) from log(x).
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`lsqrt`](@ref), [`lmin1`](@ref), [`lmax1`](@ref), [`barker_logx`](@ref), [`barker`](@ref)
 """
-sqrt_balance(loglikMargin::AbstractFloat) = exp(0.5 * loglikMargin)
-sqrt_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}) = exp(0.5 * dot(delta, logDiff))
-sqrt_balance(loglikMargin::AbstractFloat, nadd::Integer, C::LinkMatrix, logpdfC::Function) =
-    exp(lsqrt_balance(loglikMargin, nadd, C, logpdfC))
-sqrt_balance(loglikMargin::AbstractFloat, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) =
-    exp(lsqrt_balance(loglikMargin, propC, C, logpdfC, ratioPrior))
-sqrt_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, nadd::Integer, C::LinkMatrix, logpdfC::Function) = exp(lsqrt_balance(delta, logDiff, nadd, C, logpdfC))
-sqrt_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) = exp(lsqrt_balance(delta, logDiff, propC, C, logpdfC, ratioPrior))
-
-####################
-#barker
-####################
-
-lbarker(x::AbstractFloat) = x - log1pexp(x)
-
-#logs
+lbarker(logx::AbstractFloat) = logx - log1pexp(logx)
 
 """
-    f(x::Type)
+    barker_logx(logx::AbstractFloat)
 
-### Arguments
+Compute x / (1 + x) from log(x), equivalent to the logistic function.
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`barker_logx`](@ref), [`min1_logx`](@ref), [`max1_logx`](@ref), [`lbarker`](@ref), [`barker`](@ref)
 """
-lbarker_balance(loglikMargin::AbstractFloat) = lbarker(loglikMargin)
-lbarker_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}) = lbarker(dot(delta, logDiff))
-lbarker_balance(loglikMargin::AbstractFloat, nadd::Integer, C::LinkMatrix, logpdfC::Function) =
-    lbarker(lidentity_balance(loglikMargin, nadd, C, logpdfC))
-lbarker_balance(loglikMargin::AbstractFloat, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) =
-    lbarker(lidentity_balance(loglikMargin, propC, C, logpdfC, ratioPrior))
-lbarker_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, nadd::Integer, C::LinkMatrix, logpdfC::Function) = lbarker(lidentity_balance(delta, logDiff, nadd, C, logpdfC))
-lbarker_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) = lbarker(lidentity_balance(delta, logDiff, propC, C, logpdfC, ratioPrior))
-
-#logistic(log(t)) = t / (t + 1)
+barker_logx(logx::AbstractFloat) = logistic(logx)
 
 """
-    f(x::Type)
+    barker(x::T) where T <: Real
 
-### Arguments
+Compute x / (1 + x)
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`sqrt`](@ref), [`min1`](@ref), [`max1`](@ref), [`lbarker`](@ref), [`barker_logx`](@ref)
 """
-barker_balance(loglikMargin::AbstractFloat) = logistic(loglikMargin)
-barker_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}) = logistic(dot(delta, logDiff))
-barker_balance(loglikMargin::AbstractFloat, nadd::Integer, C::LinkMatrix, logpdfC::Function) =
-    logistic(lidentity_balance(loglikMargin, nadd, C, logpdfC))
-barker_balance(loglikMargin::AbstractFloat, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) =
-    logistic(lidentity_balance(loglikMargin, propC, C, logpdfC, ratioPrior))
-barker_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, nadd::Integer, C::LinkMatrix, logpdfC::Function) = logistic(lidentity_balance(delta, logDiff, nadd, C, logpdfC))
-barker_balance(delta::Array{<:Integer, 1}, logDiff::Array{<:AbstractFloat, 1}, propC::LinkMatrix, C::LinkMatrix, logpdfC::Function, ratioPrior::Bool) = logistic(lidentity_balance(delta, logDiff, propC, C, logpdfC, ratioPrior))
+barker(x::T) where T <: Real = x / (x + one(T))
+
+"""
+    lmin1(logx::Real) where T <: Real
+
+Compute log(min(x, 1)) from log(x) in logspace.
+
+See also: [`lsqrt`](@ref), [`lbarker`](@ref), [`lmax1`](@ref), [`min1_logx`](@ref), [`min1`](@ref)
+"""
+lmin1(logx::Real) where T <: Real = min(logx, zero(T))
+
+"""
+    min1_logx(logx::T) where T <: AbstractFloat
+
+Compute min(x, 1) from log(x).
+
+See also: [`barker_logx`](@ref), [`min1_logx`](@ref), [`max1_logx`](@ref), [`lmin1`](@ref), [`min1`](@ref)
+"""
+min1_logx(logx::T) where T <: AbstractFloat = logx > zero(T) ? one(T) : exp(logx)
+
+"""
+    min1(x::Real) where T <: Real
+
+Compute min(x, 1)
+
+See also: [`sqrt`](@ref), [`barker`](@ref), [`max1`](@ref), [`lmin1`](@ref), [`min1_logx`](@ref)
+"""
+min1(x::Real) where T <: Real = min(x, one(T))
+
+"""
+    lmax1(logx::Real) where T <: Real
+
+Compute log(max(x, 1)) from log(x) in logspace.
+
+See also: [`lsqrt`](@ref), [`lbarker`](@ref), [`lmin1`](@ref), [`max1_logx`](@ref), [`max1`](@ref)
+"""
+lmax1(logx::T) where T <: Real = max(logx, zero(T))
+
+"""
+    max1_logx(logx::T) where T <: AbstractFloat
+
+Compute max(x, 1) from log(x).
+
+See also: [`lsqrt`](@ref), [`lbarker`](@ref), [`lmin1`](@ref), [`lmax1`](@ref), [`max1`](@ref)
+"""
+max1_logx(logx::T) where T <: AbstractFloat = logx < zero(T) ? one(T) : exp(logx)
+
+"""
+    max1(x::T) where T <: Real
+
+Compute max(x, 1).
+
+See also: [`sqrt`](@ref), [`barker`](@ref), [`min1`](@ref), [`lmax1`](@ref), [`max1_logx`](@ref)
+"""
+max1(x::T) where T <: Real = max(x, one(T))

@@ -1,5 +1,13 @@
 """
-Drop indicies outside of connected components, removing all values from compsum.obsidx[ii, jj] where cc.rowLabels[ii] != cc.colLabels[jj]
+    dropoutside!(compsum::SparseComparisonSummary{G, Tv, Ti}, cc::ConnectedComponents) where {G <: Integer, Tv <: Integer, Ti <: Integer}
+
+Drop indicies outside of connected components, removing all values from compsum.obsidx[ii, jj] where cc.rowLabels[ii] != cc.colLabels[jj].
+
+This does not affect the values of `compsum.counts` or `compsum.npairs` meaning inferences
+performed with the resulting object will be the same, with the constraint that all that all
+record pairs outside of the connected components cannot be linked.
+
+See also: [`dropoutside`](@ref), [`randomwalk1_log_move_weights_sparse`](@ref), [`PosthocBlocks`](@ref)
 """
 function dropoutside!(compsum::SparseComparisonSummary{G, Tv, Ti}, cc::ConnectedComponents) where {G <: Integer, Tv <: Integer, Ti <: Integer}
     rows = rowvals(compsum.obsidx)
@@ -16,26 +24,80 @@ function dropoutside!(compsum::SparseComparisonSummary{G, Tv, Ti}, cc::Connected
     return compsum
 end
 
-function mh_gibbs_count(
-    nsteps::Integer,
-    C0::LinkMatrix,
-    compsum::Union{ComparisonSummary, SparseComparisonSummary},
-    phb::PosthocBlocks{G},
-    priorM::Array{T, 1},
-    priorU::Array{T, 1},
-    logpCRatio::Union{Function, Array{<:AbstractFloat, 1}},
-    transitionC!::Function,
-    loglikMissing::AbstractFloat = -Inf) where {G <: Integer, T <: Real}
+"""
+    dropoutside(compsum::ComparisonSummary{G, T}, phb::PosthocBlocks{A}) where {G <: Integer, T <: Integer, A <: Integer}
+
+Drop indicies outside of connected components, removing all values from compsum.obsidx[ii, jj] where cc.rowLabels[ii] != cc.colLabels[jj].
+
+The returned value is therefore converted to a `SparseComparisonSummary` from a
+`ComparisonSummary`. This does not affect the values of `compsum.counts` or `compsum.npairs`
+meaning inferences performed with the resulting object will be the same, with the constraint
+that all record pairs outside of the connected components cannot be linked.
+
+See also: [`dropoutside!`](@ref), [`randomwalk1_log_move_weights_sparse`](@ref), [`PosthocBlocks`](@ref)
+"""
+function dropoutside(compsum::ComparisonSummary{G, T}, phb::PosthocBlocks{A}) where {G <: Integer, T <: Integer, A <: Integer}
+    rows = Int[]
+    cols = Int[]
+    vals = T[]
+    for kk in one(A):phb.nblock
+        for jj in phb.block2cols[kk]
+            for ii in phb.block2rows[kk]
+                push!(rows, ii)
+                push!(cols, jj)
+                push!(vals, compsum.obsidx[ii, jj])
+            end
+        end
+    end
+    obsidx = sparse(rows, cols, vals)
+    return SparseComparisonSummary(obsidx, compsum.obsvecs, compsum.obsvecct, compsum.counts, compsum.obsct, compsum.misct, compsum.nlevels, compsum.cmap, compsum.levelmap, compsum.cadj, compsum.nrow, compsum.ncol, compsum.npairs, compsum.ncomp)
+end
+
+"""
+    mh_gibbs_count(nsteps::Integer, C0::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                   phb::PosthocBlocks, priorM::Array{T, 1}, priorU::Array{T, 1},
+                   logpCRatio::Union{Function, Array{<:AbstractFloat, 1}}, transitionC!::Function,
+                   loglikMissing::AbstractFloat = -Inf) where {T <: Real}
+
+Restricted MCMC algorithm for drawing posterior samples of link distribition.
+
+Returns a `ParameterChain` containing number of times each recordpairs was linked as well as
+traces for the number of links, the M parameters, and the U parameters. A count of the number
+of times each block structure is also returned as well as the final state of the link structure.
+Each step involves an update to each block as defined in `phb` as well as a gibbs updates
+for the M and U parameters by calling `gibbs_MU_draw`. For singleton blocks, those containing
+ a single row and a single column a gibbs update to the link structure is automatically
+performed using `singleton_gibbs!`,otherwise the specified update method is used.
+
+# Arguments
+* `nsteps::Integer`: Number of steps to run MCMC algorithm for, each step consistents up an
+update to each block of `C` as defined in `phb` and a gibbs update to the matching parameters.
+* `C0::LinkMatrix`: Parameter containing initial state of linkage structure.  Links should be contained within blocks of `phb`.
+* `compsum::Union{ComparisonSummary, SparseComparisonSummary}`: Summary of record pair comparisons used in model fitting.
+* `phb::PosthocBlocks`: Blocking scheme restricting proposed links to those within blocks.
+A version covering the entire space can be constructed with `PosthocBlocks(compsum)`
+* `priorM::Array{<: Real, 1}`: Parameters of dirichlet prior on each comparison variable appended into a single vector.
+* `priorU::Array{<: Real, 1}`: Parameters of dirichlet prior on each comparison variable appended into a single vector.
+* `logpCRatio::Union{Function, Array{T, 1}}`: Function or Array of logged prior ratios.
+* `transitionC!::Function`: Function for updating link structure (e.g.randomwalk1_locally_balanced_sqrt_update!, randomwalk1_update!)
+* `loglikMissing::AbstractFloat = -Inf` loglikelihood ratio to be applied for adding a missing value denomted by compsum.obsidx[row, col] == 0.
+
+See also [`mh_gibbs_trace`](@ref), [`ParameterChain`](@ref), [`singleton_gibbs!`](@ref), [`gibbs_MU_draw`](@ref)
+"""
+function mh_gibbs_count(nsteps::Integer, C0::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+    phb::PosthocBlocks, priorM::Array{T, 1}, priorU::Array{T, 1},
+    logpCRatio::Union{Function, Array{<:AbstractFloat, 1}}, transitionC!::Function,
+    loglikMissing::AbstractFloat = -Inf) where {T <: Real}
     
     #MCMC Chains
     CArray = spzeros(Int, C0.nrow, C0.ncol)
     nlinkArray = Array{Int}(undef, nsteps)
     MArray = Array{Float64}(undef, length(priorM), nsteps)
     UArray = Array{Float64}(undef, length(priorU), nsteps)
-    transC = zeros(Int64, phb.nblock)
+    transC = zeros(Int, phb.nblock)
     
     ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
+    countDeltas = get_obsidxcounts(compsum) #each column is an observation
     C = deepcopy(C0)
     matchcounts, matchobs = counts_matches(C, compsum)
     pM, pU, loglikRatios = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)
@@ -74,6 +136,37 @@ function mh_gibbs_count(
     ParameterChain(counts2indicies(CArray), nlinkArray, permutedims(MArray, [2, 1]), permutedims(UArray, [2, 1]), nsteps, false), transC, C
 end
 
+"""
+    mh_gibbs_count(nsteps::Integer, C0::LinkMatrix, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                   phb::PosthocBlocks, priorM::Array{T, 1}, priorU::Array{T, 1},
+                   logpCRatio::Union{Function, Array{<:AbstractFloat, 1}}, transitionC!::Function,
+                   loglikMissing::AbstractFloat = -Inf) where {T <: Real}
+
+Restricted MCMC algorithm for drawing posterior samples of link distribition.
+
+Returns a `ParameterChain` containing the trace of the entire link structure as well as
+traces for the number of links, the M parameters, and the U parameters. A count of the number
+of times each block structure is also returned as well as the final state of the link structure.
+Each step involves an update to each block as defined in `phb` as well as a gibbs updates
+for the M and U parameters by calling `gibbs_MU_draw`. For singleton blocks, those containing
+ a single row and a single column a gibbs update to the link structure is automatically
+performed using `singleton_gibbs!`,otherwise the specified update method is used.
+
+# Arguments
+* `nsteps::Integer`: Number of steps to run MCMC algorithm for, each step consistents up an
+update to each block of `C` as defined in `phb` and a gibbs update to the matching parameters.
+* `C0::LinkMatrix`: Parameter containing initial state of linkage structure.  Links should be contained within blocks of `phb`.
+* `compsum::Union{ComparisonSummary, SparseComparisonSummary}`: Summary of record pair comparisons used in model fitting.
+* `phb::PosthocBlocks`: Blocking scheme restricting proposed links to those within blocks.
+A version covering the entire space can be constructed with `PosthocBlocks(compsum)`
+* `priorM::Array{<: Real, 1}`: Parameters of dirichlet prior on each comparison variable appended into a single vector.
+* `priorU::Array{<: Real, 1}`: Parameters of dirichlet prior on each comparison variable appended into a single vector.
+* `logpCRatio::Union{Function, Array{T, 1}}`: Function or Array of logged prior ratios.
+* `transitionC!::Function`: Function for updating link structure (e.g.randomwalk1_locally_balanced_sqrt_update!, randomwalk1_update!)
+* `loglikMissing::AbstractFloat = -Inf` loglikelihood ratio to be applied for adding a missing value denomted by compsum.obsidx[row, col] == 0.
+
+See also [`mh_gibbs_count`](@ref), [`ParameterChain`](@ref), [`singleton_gibbs!`](@ref), [`gibbs_MU_draw`](@ref)
+"""
 function mh_gibbs_trace(
     nsteps::Integer,
     C0::LinkMatrix,
@@ -97,7 +190,7 @@ function mh_gibbs_trace(
     transC = zeros(Int64, phb.nblock)
     
     ##Initial States
-    countDeltas = counts_delta(compsum) #each column is an observation
+    countDeltas = get_obsidxcounts(compsum) #each column is an observation
     C = deepcopy(C0)
     matchcounts, matchobs = counts_matches(C, compsum)
     pM, pU, loglikRatios = gibbs_MU_draw(matchcounts, compsum, countDeltas, priorM, priorU)

@@ -1,3 +1,32 @@
+"""
+    ParameterChain{G <: Integer, T <: AbstractFloat}
+
+Store either MCMC parameter traces or parameter evolution produced by a penalized likelihood estimator.
+
+# Fields
+
+* `C::Array{G, 2}`: Either row and column indices paired with link counts or indicies paired with steps / iterations in which they appeared.
+* `nlinks::Union{Array{G, 1}, Array{G, 2}}`: Total number of links at each step / iteration.
+* `pM::Array{T, 2}`: M parameters at each iteration, size(pM, 1) == nsteps
+* `pU::Array{T, 2}`: U parameters at each iteration, size(pU, 1) == nsteps
+* `nsteps::Int`: Total number of steps / iterations
+* `linktrace::Bool`: Indicator if `C` contains link counts or a trace of the entire link structure.
+
+If `linktrace == true` then each row of `C` will correspond to an interval in which a link persisted in the form
+* C[ii, 1]: link row.
+* C[ii, 2]: link column.
+* C[ii, jj] where jj > 2 and jj < size(C, 2) - 1: other fields (flexible).
+* C[ii, end - 1]: first step / iteration link was present.
+* C[ii, end]: last step / iteration link was present.
+This allows both the frequency with which each link appeared to be reconstructed as well as the exact LinkMatrix
+at any iteration to be reconstructed.
+
+If `linktrace == false` then each row of `C` will correspond to a link and a count of the number of times it appeared in the form
+* C[ii, 1]: link row.
+* C[ii, 2]: link column.
+* C[ii, jj] where jj > 2 and jj < size(C, 2): other fields (flexible).
+* C[ii, end]: frequency count of link appaearance.
+"""
 struct ParameterChain{G <: Integer, T <: AbstractFloat}
     C::Array{G, 2}
     nlinks::Union{Array{G, 1}, Array{G, 2}}
@@ -7,6 +36,13 @@ struct ParameterChain{G <: Integer, T <: AbstractFloat}
     linktrace::Bool
 end
 
+"""
+    counts2indicies(A::SparseMatrixCSC{G, T}) where {G <: Integer, T <: Integer}
+    counts2indicies(A::Array{G, 2}) where G <: Integer
+    counts2indicies(A::Array{G, 3}) where G <: Integer
+
+Transform an array of counts to [rows cols counts] array storing only indicies and counts.
+"""
 counts2indicies(A::SparseMatrixCSC{G, T}) where {G <: Integer, T <: Integer} = hcat(findnz(A)...)
 
 function counts2indicies(A::Array{G, 2}) where G <: Integer
@@ -45,6 +81,11 @@ function counts2indicies(A::Array{G, 3}) where G <: Integer
     return [rows cols stages vals]
 end
 
+"""
+    get_linkcounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: AbstractFloat}
+
+Return pairwise link counts from a `ParameterChain` in form of [rows cols counts]
+"""
 function get_linkcounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: AbstractFloat}
     if pchain.linktrace
         ctDict = DefaultDict{Tuple{Int, Int}, Int}(zero(Int))

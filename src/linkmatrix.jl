@@ -1,23 +1,33 @@
 """
-This types does...
+    mutable struct LinkMatrix{G <: Integer}
 
-### Constructors
+Stores the state of links between two datasets.
 
-    f(x::Type)
+# Fields
 
-### Arguments
+* `row2col::Array{G, 1}`: Mapping from row to column.  row2ccol[ii] = jj if row ii is linked to column jj.  If row ii is unlinked then row2col[ii] == 0.
+* `col2row::Array{G, 1}`: Mapping from column to row.  col2row[jj] = ii if column jj is linked to row ii.  If column jj is unlinked then col2row[jj] == 0.
+* `nlink::G`: Number of record pairs counted as links.
+* `nrow::G`: Number of rows equal, nrow == length(row2col).
+* `ncol::G`: Number of columns, ncol == length(col2row)
 
-* `var` : brief description
+# Constructors
 
-### Details
+    LinkMatrix(nrow::G, ncol::G) where G <: Integer
+    LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}, nlink::G) where G <: Integer
+    LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}) where G <: Integer
+    LinkMatrix(row2col::Array{G}, ncol::G) where G <: Integer
+    LinkMatrix(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1})
 
-### Value
+# Arguments
 
-### Examples
-
-```julia
-
-```
+* `nrow::G`: Number of rows equal, nrow == length(row2col).
+* `ncol::G`: Number of columns, ncol == length(col2row)
+* `row2col::Array{G, 1}`: Mapping from row to column.  row2ccol[ii] = jj if row ii is linked to column jj.  If row ii is unlinked then row2col[ii] == 0.
+* `col2row::Array{G, 1}`: Mapping from column to row.  col2row[jj] = ii if column jj is linked to row ii.  If column jj is unlinked then col2row[jj] == 0.
+* `nlink::G`: Number of record pairs counted as links.
+* `mrows::G`: List of rows that are linked should be paired with a `mcols` variable containing the linked column.
+* `mcowl::G`: List of columns that are linked should be paired with a `mrows` variable containing the linked rows.
 """
 mutable struct LinkMatrix{G <: Integer}
     row2col::Array{G, 1}
@@ -28,7 +38,7 @@ mutable struct LinkMatrix{G <: Integer}
 end
 
 LinkMatrix(nrow::G, ncol::G) where G <: Integer = LinkMatrix(zeros(G, nrow), zeros(G, ncol), zero(G), nrow, ncol)
-LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}, nlink::G) where G <: Integer = LinkMatrix(row2col, col2row, G(length(row2col)), G(length(col2row)))
+LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}, nlink::G) where G <: Integer = LinkMatrix(row2col, col2row, nlink, G(length(row2col)), G(length(col2row)))
 LinkMatrix(row2col::Array{G, 1}, col2row::Array{G, 1}) where G <: Integer = LinkMatrix(row2col, col2row, count(!iszero, x))
 function LinkMatrix(row2col::Array{G}, ncol::G) where G <: Integer
     col2row = zeros(G, ncol)
@@ -52,28 +62,6 @@ function LinkMatrix(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1}) wh
     return LinkMatrix(row2col, col2row, length(mrows), nrow, ncol)
 end
 
-LinkMatrix(row2col::SparseVector{G, G}, col2row::SparseVector{G, G}) where G <: Integer = LinkMatrix(row2col, col2row, G(countnz(row2col)), G(row2col.n), G(col2row.n))
-function LinkMatrix(row2col::SparseVector{G, T}, col2row::SparseVector{G, T}) where {G <: Integer, T <: Integer}
-    if countnz(row2col) != countnz(col2row)
-        error("inconsistent row and column mappings provided")
-    end
-    if typemax(G) >= typemax(T)
-        return LinkMatrix(SparseVector(row2col.n, G.(row2col.nzind), row2col.nzval), SparseVector(col2row.n, G.(col2row.nzind), col2row.nzval))
-    else
-        return LinkMatrix(SparseVector(row2col.n, row2col.nzind, T.(row2col.nzval)), SparseVector(col2row.n, col2row.nzind, T.(col2row.nzval)))
-    end
-end
-
-function LinkMatrix(G::DataType, row2col::SparseVector, col2row::SparseVector)
-    if countnz(row2col) != countnz(col2row)
-        error("inconsistent row and column mappings provided")
-    end
-    if !(G <: Integer)
-        error("G must be an integer")
-    end
-    return LinkMatrix(SparseVector(row2col.n, G.(row2col.nzind), G.(row2col.nzval)), SparseVector(col2row.n, G.(col2row.nzind), G.(col2row.nzval)))
-end
-
 """
     f(x::Type)
 
@@ -94,76 +82,58 @@ end
 function ==(C1::LinkMatrix, C2::LinkMatrix)
     if C1.nrow != C2.nrow
         return false
-    end
-    
-    if C1.ncol != C2.ncol
+    elseif C1.ncol != C2.ncol
         return false
-    end
-    
-    if C1.nlink != C2.nlink
+    elseif C1.nlink != C2.nlink
         return false
-    end
-    
-    for (row1, row2) in zip(C1.row2col, C2.row2col)
-        if row1 != row2
-            return false
+    else
+        for (row1, row2) in zip(C1.row2col, C2.row2col)
+            if row1 != row2
+                return false
+            end
         end
-    end
     
-    for (col1, col2) in zip(C1.col2row, C2.col2row)
-        if col1 != col2
-            return false
+        for (col1, col2) in zip(C1.col2row, C2.col2row)
+            if col1 != col2
+                return false
+            end
         end
     end
     return true
 end
 
 """
-    f(x::Type)
+    has_link(row::G, col::G, C::LinkMatrix) where G <: Integer
 
-### Arguments
+Return `true` if row and column are linked and `false` otherwise.
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`add_link!`](@ref), [`remove_link!`](@ref), [`rowswitch_link!`](@ref), [`colswitch_link!`](@ref), [`doubleswitch_link!`](@ref), [`LinkMatirx`](@ref)
 """
 function has_link(row::G, col::G, C::LinkMatrix) where G <: Integer
     if izero(row) || iszero(col)
         return false
-    elseif (C.row2col[row] != col) || (C.col2row[col] != row)
+    elseif (C.row2col[row] != col)
         return false
+    elseif (C.col2row[col] != row)
+        @warn "row2col and col2row are inconsistent"
     else
-        return false
+        return true
     end
 end
 
 """
-    f(x::Type)
+    add_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
 
-### Arguments
+Update `C` to link `row` and `col` checking that neither is already linked.
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`add_link`](@ref), [`remove_link!`](@ref), [`rowswitch_link!`](@ref), [`colswitch_link!`](@ref), [`doubleswitch_link!`](@ref), [`LinkMatirx`](@ref)
 """
 function add_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
-    if !iszero(C.row2col[row])
+    if iszero(row)
+        @warn "Row is zero, no addition made"
+    elseif iszero(col)
+        @warn "Col is zero, no addition made"
+    elseif !iszero(C.row2col[row])
         @warn "row non-empty no addition made"
     elseif !iszero(C.col2row[col])
         @warn "col non-empty no addition made"
@@ -176,40 +146,20 @@ function add_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
 end
 
 """
-    f(x::Type)
+    add_link(row::G, col::G, C::LinkMatrix) where G <: Integer
 
-### Arguments
+Update a copy of `C` to link `row` and `col` checking that neither is already linked.
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`add_link!`](@ref), [`remove_link`](@ref), [`rowswitch_link`](@ref), [`colswitch_link`](@ref), [`doubleswitch_link`](@ref), [`LinkMatirx`](@ref)
 """
 add_link(row::G, col::G, C::LinkMatrix) where G <: Integer = add_link!(row, col, deepcopy(C))
 
 """
-    f(x::Type)
+    remove_link!(row::G, col::G, C::LinkMatrix) where G <: Integer
 
-### Arguments
+Remove `row` and `col` link checking that link exists.
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`add_link!`](@ref), [`remove_link`](@ref), [`rowswitch_link!`](@ref), [`colswitch_link!`](@ref), [`doubleswitch_link!`](@ref), [`LinkMatirx`](@ref)
 """
 function remove_link!(row::G, col::G, C::LinkMatrix) where G <: Integer
     if iszero(row)
@@ -229,70 +179,87 @@ function remove_link!(row::G, col::G, C::LinkMatrix) where G <: Integer
 end
 
 """
-    f(x::Type)
+    remove_link(row::G, col::G, C::LinkMatrix) where G <: Integer
 
-### Arguments
+Copy `C` and remove `row` and `col` link checking that link exists.
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`add_link`](@ref), [`remove_link!`](@ref), [`rowswitch_link`](@ref), [`colswitch_link`](@ref), [`doubleswitch_link`](@ref), [`LinkMatirx`](@ref)
 """
 remove_link(row::G, col::G, C::LinkMatrix) where G <: Integer = remove_link!(row, col, deepcopy(C))
 
-function rowswitch_link!(newrow::G, col::G, C::LinkMatrix{G}) where G <: Integer
-    if iszero(C.col2row[col])
+"""
+    rowswitch_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
+
+Check that `col` is currently linked and change link from `C.col2row[col]`, `col`. Only performed if `row` currently unassigned.
+
+
+See also: [`add_link!`](@ref), [`remove_link!`](@ref), [`rowswitch_link`](@ref), [`colswitch_link!`](@ref), [`doubleswitch_link!`](@ref), [`LinkMatirx`](@ref)
+"""
+function rowswitch_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
+    if iszero(row)
+        @warn "Row is zero, no switch made"
+    elseif iszero(col)
+        @warn "Col is zero, no switch made"
+    elseif iszero(C.col2row[col])
         @warn "Col not linked, no switch made"
-    elseif !iszero(C.row2col[newrow])
-        @warn "Newrow already assigned, no switch made"
+    elseif !iszero(C.row2col[row])
+        @warn "Row already assigned, no switch made"
     else
         C.row2col[C.col2row[col]] = zero(G)
-        C.col2row[col] = newrow
-        C.row2col[newrow] = col
+        C.col2row[col] = row
+        C.row2col[row] = col
     end
     return C
 end
-
-rowswitch_link(newrow::G, col::G, C::LinkMatrix{G}) where G <: Integer = rowswitch_link!(newrow, col, deepcopy(C))
-
-function colswitch_link!(row::G, newcol::G, C::LinkMatrix{G}) where G <: Integer
-    if iszero(C.row2col[row])
-        @warn "Row not linked, no switch made"
-    elseif !iszero(C.col2row[newcol])
-        @warn "Newcol already assigned, no switch made"
-    else
-        C.col2row[C.row2col[row]] = zero(G)
-        C.row2col[row] = newcol
-        C.col2row[newcol] = row
-    end
-    return C
-end
-
-colswitch_link(row::G, newcol::G, C::LinkMatrix{G}) where G <: Integer = colswitch_link!(row, newcol, deepcopy(C))
 
 """
-    f(x::Type)
+    rowswitch_link(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
 
-### Arguments
+Copy `C`, check that `col` is currently linked and change link from `C.col2row[col]`, `col`. Only performed if `row` currently unassigned.
 
-* `var` : brief description
+See also: [`add_link`](@ref), [`remove_link`](@ref), [`rowswitch_link!`](@ref), [`colswitch_link`](@ref), [`doubleswitch_link`](@ref), [`LinkMatirx`](@ref)
+"""
+rowswitch_link(row::G, col::G, C::LinkMatrix{G}) where G <: Integer = rowswitch_link!(row, col, deepcopy(C))
 
-### Details
+"""
+    colswitch_link!(row::G, newcol::G, C::LinkMatrix{G}) where G <: Integer
 
-### Value
+Check that `row` is currently linked and change link from `row`, `C.row2col[row]`. Only performed if `col` currently unassigned.
 
-### Examples
+See also: [`add_link!`](@ref), [`remove_link!`](@ref), [`rowswitch_link!`](@ref), [`colswitch_link`](@ref), [`doubleswitch_link!`](@ref), [`LinkMatirx`](@ref)
+"""
+function colswitch_link!(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
+    if iszero(row)
+        @warn "Row is zero, no switch made"
+    elseif iszero(col)
+        @warn "Col is zero, no switch made"
+    elseif iszero(C.row2col[row])
+        @warn "Row not linked, no switch made"
+    elseif !iszero(C.col2row[col])
+        @warn "Col already assigned, no switch made"
+    else
+        C.col2row[C.row2col[row]] = zero(G)
+        C.row2col[row] = col
+        C.col2row[col] = row
+    end
+    return C
+end
 
-```julia
+"""
+    colswitch_link(row::G, col::G, C::LinkMatrix{G}) where G <: Integer
 
-```
+Copy `C` and checks that `row` is currently linked and change link from `row`, `C.row2col[row]`. Only performed if `col` currently unassigned.
+
+See also: [`add_link`](@ref), [`remove_link`](@ref), [`rowswitch_link`](@ref), [`colswitch_link!`](@ref), [`doubleswitch_link`](@ref), [`LinkMatirx`](@ref)
+"""
+colswitch_link(row::G, col::G, C::LinkMatrix{G}) where G <: Integer = colswitch_link!(row, col, deepcopy(C))
+
+"""
+   doubleswitch_link!(newrow::G, newcol::G, C::LinkMatrix) where G <: Integer
+
+Performed where `newrow` currnetly linked to `col` and `row` currently linked to `newcol`.  Switches links to `newrow`, `newcol` and `row`, `col`
+
+See also: [`add_link!`](@ref), [`remove_link!`](@ref), [`rowswitch_link!`](@ref), [`colswitch_link!`](@ref), [`doubleswitch_link`](@ref), [`LinkMatirx`](@ref)
 """
 function doubleswitch_link!(newrow::G, newcol::G, C::LinkMatrix) where G <: Integer
     if iszero(newrow)
@@ -317,20 +284,10 @@ function doubleswitch_link!(newrow::G, newcol::G, C::LinkMatrix) where G <: Inte
 end
 
 """
-    f(x::Type)
+   doubleswitch_link(newrow::G, newcol::G, C::LinkMatrix) where G <: Integer
 
-### Arguments
+Copy `C` and then where `newrow` currnetly linked to `col` and `row` currently linked to `newcol`.  Switches links to `newrow`, `newcol` and `row`, `col`
 
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+See also: [`add_link`](@ref), [`remove_link`](@ref), [`rowswitch_link`](@ref), [`colswitch_link`](@ref), [`doubleswitch_link!`](@ref), [`LinkMatirx`](@ref)
 """
-doubleswitch_link(row1::G, col1::G, row2::G, col2::G, C::LinkMatrix) where G <: Integer = doubleswitch_link!(row1, col1, row2, col2, deepcopy(C))
+doubleswitch_link(newrow::G, newcol::G, C::LinkMatrix) where G <: Integer = doubleswitch_link!(newrow, newcol, deepcopy(C))
