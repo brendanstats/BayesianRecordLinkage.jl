@@ -31,7 +31,7 @@ observed comparison vector. Zero entries indicate a missing value for the compar
     ComparisonSummary(comparisons::Array{G, 3}, nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, 1:2))) where G <: Integer
     ComparisonSummary(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::ComparisonSummary) where G <: Integer
 
-See also: [`SparseComparisonSumamry`](@ref), [`mapping_variables`](@ref), [`comparison_variables`](@ref), [`count_variables`](@ref)
+See also: [`SparseComparisonSummary`](@ref), [`mapping_variables`](@ref), [`comparison_variables`](@ref), [`count_variables`](@ref)
 """
 struct ComparisonSummary{G <: Integer, T <: Integer}
     obsidx::Array{T, 2}
@@ -59,7 +59,7 @@ Transform `nlevels` listing number of bins for each comparison field into set of
 Using in the construction of `ComparisonSummary` and `SparseComparisonSummary` types.  Return a tuple
 of cmap (index to comparison), levelmap (index to level), and cadj (comparison adjustment).
 
-See also: [`ComparisonSumamry`](@ref), [`SparseComparisonSumamry`](@ref), [`comparison_variables`](@ref), [`count_variables`](@ref)
+See also: [`ComparisonSummary`](@ref), [`SparseComparisonSummary`](@ref), [`comparison_variables`](@ref), [`count_variables`](@ref)
 """
 function mapping_variables(nlevels::Array{Int64, 1})
     cmap = mapreduce(x -> fill(x[1], x[2]), vcat, enumerate(nlevels))
@@ -80,7 +80,7 @@ Helper function for generating `obsidx`, `obsvecs`, and `obsvecct` fields in `Co
 
 If `comparisons` is of type `Array{3}` then `obsidx` is a full matrix and a `ComparisonSummary` will be generated.  If not then `obsidx` is a `SparseMatrixCSC` and a `SparseComparisonSummary` will be generated.  If seperate `rows` and `cols` variables are missing then the first two colums are assumed to correspond to the row and column indicies respectively.
 
-See also: [`ComparisonSumamry`](@ref), [`SparseComparisonSumamry`](@ref), [`mapping_variables`](@ref), [`count_variables`](@ref)
+See also: [`ComparisonSummary`](@ref), [`SparseComparisonSummary`](@ref), [`mapping_variables`](@ref), [`count_variables`](@ref)
 """
 function comparison_variables(comparisons::BitArray{3}, nrow::Int64, ncol::Int64, ncomp::Int64)
     obsidx = Array{Int64}(undef, nrow, ncol)
@@ -216,7 +216,7 @@ end
 
 Helper function used to generate `npairs`, `counts`, `obsct`, and `misct` fields in `ComparisonSummary` and `SparseComparisonSummary` types.
 
-See also: [`ComparisonSumamry`](@ref), [`SparseComparisonSumamry`](@ref), [`mapping_variables`](@ref), [`comparison_variables`](@ref)
+See also: [`ComparisonSummary`](@ref), [`SparseComparisonSummary`](@ref), [`mapping_variables`](@ref), [`comparison_variables`](@ref)
 """
 function count_variables(obsidx::Array{G, 2}, obsvecs::Array{T, 2}, obsvecct::Array{Int64, 1}, cmap::Array{Int64, 1}, cadj::Array{Int64, 1}) where {G <: Integer, T <: Integer}
     ncomp = size(obsvecs, 1)
@@ -322,7 +322,7 @@ observed comparison vector.  Zero entries indicate a missing value for the compa
                              nlevels::Array{Int64, 1} = Int64.(vec(maximum(comparisons, 1))[3:end])) where G <: Integer
     SparseComparisonSummary(rowperm::Array{G, 1}, colperm::Array{G, 1}, compsum::SparseComparisonSummary) where G <: Integer
 
-See also: [`ComparisonSumamry`](@ref), [`mapping_variables`](@ref), [`comparison_variables`](@ref), [`count_variables`](@ref)
+See also: [`ComparisonSummary`](@ref), [`mapping_variables`](@ref), [`comparison_variables`](@ref), [`count_variables`](@ref)
 """
 struct SparseComparisonSummary{G <: Integer, Tv <: Integer, Ti <: Integer}
     obsidx::SparseMatrixCSC{Tv, Ti}
