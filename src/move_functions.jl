@@ -231,7 +231,7 @@ get_counts(row::Integer, col::Integer, compsum::ComparisonSummary, obsidxCounts:
 
 function get_counts(row::Integer, col::Integer, compsum::SparseComparisonSummary, obsidxCounts::Array{G, 2}) where G <: Integer
     if iszero(compsum.obsidx[row, col])
-        return zeros(T, size(obsidxCounts, 1))
+        return zeros(G, size(obsidxCounts, 1))
     else
         return obsidxCounts[:, compsum.obsidx[row, col]]
     end
