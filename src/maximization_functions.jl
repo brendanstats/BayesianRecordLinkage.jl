@@ -52,6 +52,196 @@ function max_MU(rows2cols::Array{G, 1},
     return pM, pU
 end
 
+#can also be used inside cluster based solver
+function max_C_hungarian(weightMat::SparseMatrixCSC{T}, maxw::T) where T <: AbstractFloat
+    cost = reward2cost(Matrix(weightMat), maxw)
+    astate = hungarian_assignment(cost)
+    for (ii, jj) in pairs(astate.r2c)
+        if iszero(weightMat[ii, jj])
+            astate.r2c[ii] = 0
+            astate.c2r[jj] = 0
+            astate.nassigned -= 1
+        end
+    end
+    return astate
+end
+
+#wrapper for when clustering not used
+function max_C_hungarian(wpenalized::Array{<:AbstractFloat, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary})
+    weightMat = penalized_weights_matrix(wpenalized, compsum)
+    return max_C_hungarian(weightMat, maximum(wpenalized))
+end
+
+#recycles prices, can also be used inside cluster based solver
+function max_C_auction!(astate::AssignmentState, weightMat::SparseMatrixCSC{T}, lambda::T, epsi0::T, epsitol::T; epsiscale::T = T(0.2)) where T <: AbstractFloat
+    astate, lambda = auction_assignment_padasfr1(weightMat, astate = astate, lambda0 = lambda, epsi0 = epsi0, epsitol = epsitol, epsiscale = epsiscale, dfltReward = zero(T), dfltTwo = -T(Inf))
+    adjust_inf!(astate, lambda)
+    remove_padded!(astate, size(weightMat, 2))
+    return astate, lambda
+end
+
+#wrapper for when clustering not used but prices are recycled
+function max_C_auction!(astate::AssignmentState, lambda::T, epsi0::T, tol::T, wpenalized::Array{T, 1},
+                        compsum::Union{ComparisonSummary, SparseComparisonSummary}; epsiscale::T = T(0.2)) where T <: AbstractFloat
+    weightMat = penalized_weights_matrix(wpenalized, compsum)
+    for jj in 1:size(weightMat, 2)
+        if length(nzrange(weightMat, jj)) == 0
+            astate.colPrices[jj] = zero(T)
+        end
+    end
+    epsitol = tol / compsum.nrow
+    return max_C_auction!(astate, weightMat, lambda, epsi0, epsitol, epsiscale = epsiscale)
+end
+
+#wrapper for when clustering is used but prices are not recycled
+function max_C_auction(weightMat::SparseMatrixCSC{T}, epsi0::T, epsitol; epsiscale::T = T(0.2)) where T <: AbstractFloat
+    astate = AssignmentState(weightMat, maximize = true, assign = true, pad = true)
+    return max_C_auction!(astate, weightMat, zero(T), epsi0, epsitol, epsiscale = epsiscale)[1]
+end
+
+#wrapper for when clustering not used and prices are not recycled
+function max_C_auction(wpenalized::Array{T, 1}, tol::T, compsum::Union{ComparisonSummary, SparseComparisonSummary}; epsiscale::T = T(0.2)) where T <: AbstractFloat
+    weightMat = penalized_weights_matrix(wpenalized, compsum)
+    epsi0 = maximum(weightMat) * epsiscale
+    epsitol = tol / compsum.nrow
+    return max_C_auction(weightMat, epsi0, epsitol, epsiscale = epsiscale)
+end
+
+function max_C_cluster_setup(wpenalized::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <:AbstractFloat
+    weightMat = penalized_weights_matrix(wpenalized, compsum)
+    rowLabels, colLabels, maxLabel = bipartite_cluster(weightMat, zero(T))
+    cc = ConnectedComponents(rowLabels, colLabels, maxLabel)
+
+    maxw = maximum(wpenalized)
+    component2rows = label2dict(cc.rowLabels)
+    component2cols = label2dict(cc.colLabels)
+    return weightMat, maxw, maxLabel, component2rows, component2cols
+end
+
+#hungarian algorithm using clustering
+function max_C_cluster_hungarian(wpenalized::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where T <:AbstractFloat
+
+    weightMat, maxw, maxLabel, component2rows, component2cols = max_C_cluster_setup(wpenalized, compsum)
+    
+    astate = AssignmentState(zeros(T, compsum.nrow), zeros(T, compsum.nrow + compsum.ncol))
+    for kk in 1:maxLabel
+        
+        #get component assignment
+        rows = component2rows[kk]
+        cols = component2cols[kk]
+
+        if length(rows) == 1
+            if length(cols) == 1
+                astate.r2c[rows[1]] = cols[1]
+                astate.c2r[cols[1]] = rows[1]
+                astate.nassigned += 1
+            else
+                reward, cidx = findmax(weightMat[rows[1], cols])
+                astate.r2c[rows[1]] = cols[cidx]
+                astate.c2r[cols[cidx]] = rows[1]
+                astate.nassigned += 1
+            end
+        else
+            if length(cols) == 1
+                reward, ridx = findmax(weightMat[rows, cols[1]])
+                astate.r2c[rows[ridx]] = cols[1]
+                astate.c2r[cols[1]] = rows[ridx]
+                astate.nassigned += 1
+            else
+                
+                astatecomp = max_C_hungarian(weightMat[rows, cols], maxw)
+                
+                #add component assignments to astate
+                astate.r2c[rows] = [iszero(cidx) ? zero(cidx) : cols[cidx] for cidx in astatecomp.r2c]
+                astate.c2r[cols] = [iszero(ridx) ? zero(ridx) : rows[ridx] for ridx in astatecomp.c2r]
+                astate.nassigned += astatecomp.nassigned
+            end
+        end
+    end
+    
+    return astate
+end
+
+#auction algorithm using clustering without recycled prices
+function max_C_cluster_auction(wpenalized::Array{T, 1}, tol::T, compsum::Union{ComparisonSummary, SparseComparisonSummary}; epsiscale::T = T(0.2)) where T <:AbstractFloat
+
+    weightMat, maxw, maxLabel, component2rows, component2cols = max_C_cluster_setup(wpenalized, compsum)
+    epsi0 = maxw * epsiscale
+    
+    astate = AssignmentState(zeros(T, compsum.nrow), zeros(T, compsum.nrow + compsum.ncol))
+    for kk in 1:maxLabel
+        
+        #get component assignment
+        rows = component2rows[kk]
+        cols = component2cols[kk]
+        padcols = [cols; rows .+ compsum.ncol]
+        
+        if length(rows) == 1 && length(cols) == 1
+            astate.r2c[rows[1]] = cols[1]
+            astate.c2r[cols[1]] = rows[1]
+            astate.rowPrices[rows[1]] = weightMat[rows[1], cols[1]] #assuming padded cost of zero and lambda of 0, starting prices of 0
+            astate.nassigned += 1
+        else
+            epsitol = tol / length(rows)
+            astatecomp = max_C_auction(weightMat[rows, cols], max(epsi0, epsitol), epsitol, epsiscale = epsiscale)
+            
+            #add component assignments to astate
+            astate.r2c[rows] = [iszero(cidx) ? zero(cidx) : cols[cidx] for cidx in astatecomp.r2c]
+            astate.c2r[cols] = [iszero(ridx) ? zero(ridx) : rows[ridx] for ridx in astatecomp.c2r[1:length(cols)]]
+            astate.rowPrices[rows] = astatecomp.rowPrices
+            astate.colPrices[padcols] = astatecomp.colPrices
+            astate.nassigned += astatecomp.nassigned
+        end
+    end
+    
+    return astate
+end
+
+#auction algorithm using clustering and recycled prices - supplied astate should be cleared only price information is used
+function max_C_cluster_auction!(astate::AssignmentState, wpenalized::Array{T, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                lambda::T, epsi0::T, tol::T; epsiscale::T = T(0.2)) where T <:AbstractFloat
+
+    weightMat, maxw, maxLabel, component2rows, component2cols = max_C_cluster_setup(wpenalized, compsum)
+    epsi0 = maxw * epsiscale
+    
+    lambdaout = T(Inf)
+    for kk in 1:maxLabel
+        
+        #get component assignment
+        rows = component2rows[kk]
+        cols = component2cols[kk]
+        padcols = [cols; rows .+ compsum.ncol]
+
+        if length(rows) == 1 && length(cols) == 1 #only look at this case here because of managing prices for padded columns
+            astate.r2c[rows[1]] = cols[1]
+            astate.c2r[cols[1]] = rows[1]
+            astate.colPrices[padcols[1]] = lambda
+            astate.rowPrices[rows[1]] = weightMat[rows[1], cols[1]] - lambda
+            if astate.colPrices[padcols[2]] > max(astate.rowPrices[rows[1]], lambda) #assuming padded cost of zero
+                astate.colPrices[padcols[1]] = min(-astate.rowPrices[rows[1]], lambda) 
+            end
+            astate.nassigned += 1
+        else
+            epsitol = tol / length(rows)
+            astatecomp = AssignmentState(astate.rowPrices[rows], astate.colPrices[padcols])
+            astatecomp, lambdacomp = max_C_auction!(astatecomp, weightMat[rows, cols], lambda, max(epsi0, epsitol), epsitol, epsiscale = epsiscale)
+            
+            #add component assignments to astate
+            astate.r2c[rows] = [iszero(cidx) ? zero(cidx) : cols[cidx] for cidx in astatecomp.r2c]
+            astate.c2r[cols] = [iszero(ridx) ? zero(ridx) : rows[ridx] for ridx in astatecomp.c2r[1:length(cols)]]
+            astate.rowPrices[rows] = astatecomp.rowPrices
+            astate.colPrices[padcols] = astatecomp.colPrices
+            astate.nassigned += astatecomp.nassigned
+            
+            if lambdacomp < lambdaout
+                lambdaout = lambdacomp
+            end
+        end
+    end
+    
+    return astate, lambda
+end
+
 """
     max_C(pM, pU, comparisonSummary, penalty) -> matchRows, matchColumns
 """

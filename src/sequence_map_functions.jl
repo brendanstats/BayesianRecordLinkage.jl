@@ -220,13 +220,10 @@ end
 
 ```
 """
-function map_solver_search(pM0::Array{G, 1},
-                           pU0::Array{G, 1},
+function map_solver_search(pM0::Array{G, 1}, pU0::Array{G, 1},
                            compsum::Union{ComparisonSummary, SparseComparisonSummary},
-                           priorM::Array{T, 1},
-                           priorU::Array{T, 1},
-                           penalty0::Real = 0.0,
-                           mininc::Real = 0.0;
+                           priorM::Array{T, 1}, priorU::Array{T, 1},
+                           penalty0::Real = 0.0, mininc::Real = 0.0;
                            maxIter::Integer = 100,
                            verbose::Bool = false,
                            logfile::String = "log.txt",
@@ -253,7 +250,6 @@ function map_solver_search(pM0::Array{G, 1},
     prevrow2col = copy(row2col)
     startrow2col = ones(Int, length(row2col)) #zeros(Int, length(currrow2col))
     
-    #outMatches = Dict(1 => copy(row2col))
     ii = 1
     
     while nabove > 1
@@ -318,6 +314,195 @@ function map_solver_search(pM0::Array{G, 1},
     
     #return outMatches, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), penalties, outIter
     return ParameterChain([outrows outcols outstart outstop], outLinks, permutedims(outM, [2, 1]), permutedims(outU, [2, 1]), length(outLinks), true), penalties, outIter
+end
+
+function penalized_likelihood_search_hungarian(pM0::Array{G, 1}, pU0::Array{G, 1},
+                                               compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                               priorM::Array{T, 1}, priorU::Array{T, 1},
+                                               penalty0::Real = 0.0, mininc::Real = 0.0;
+                                               tol::AbstractFloat = 0.0, maxIter::Integer = 100,
+                                               cluster::Bool = true, verbose::Bool = false,
+                                               logfile::String = "log.txt",
+                                               logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+    
+    pseudoM = priorM - ones(T, length(priorM))
+    pseudoU = priorU - ones(T, length(priorU))
+
+    outrows, outcols, outstart, outstop = Int[], Int[], Int[], Int[]
+        
+    #Solver for first value
+    astate, pM, pU, iter = penalized_likelihood_hungarian(pM0, pU0, compsum, priorM, priorU, penalty0, tol = tol, maxIter = maxIter, cluster = cluster)
+    penalty = copy(penalty0)
+    nabove = count(penalized_weights_vector(pM, pU, compsum, penalty0) .> 0.0)
+    outLinks = [astate.nassigned]
+    outM = reshape(pM, (length(pM), 1))
+    outU = reshape(pU, (length(pM), 1))
+    outIter = [iter]
+    penalties = [penalty0]
+
+    prevrow2col = copy(astate.r2c)
+    startrow2col = ones(Int, astate.nrow) #zeros(Int, length(currrow2col))
+    
+    ii = 1
+    
+    while nabove > 1
+        if verbose
+            println("penalty: $penalty, matches: $(astate.nassigned), nabove: $nabove")
+        end
+        if logflag
+            open(logfile, "a") do f
+                write(f, Dates.format(now(), "yyyy-mm-dd HH:MM:SS"), "\n")
+                write(f, "penalty: $penalty, matches: $(astate.nassigned), nabove: $nabove\n\n")
+            end
+        end
+        ii += 1
+        penalty, nabove = next_penalty(astate.r2c, pM, pU, compsum, penalty, mininc)
+
+        #Delete matches that would be excluded by the increased penalty
+        w = penalized_weights_vector(pM, pU, compsum, penalty)
+        for row in 1:astate.nrow
+            if !iszero(astate.r2c[row]) #should be handled... [row] < compsum.ncol
+                if iszero(w[compsum.obsidx[row, astate.r2c[row]]])
+                    astate.c2r[astate.r2c[row]] = 0
+                    astate.r2c[row] = 0
+                    astate.nassigned -= 1
+                end
+            end
+        end
+        pM, pU = max_MU(astate.r2c, compsum, pseudoM, pseudoU)
+
+        astate, pM, pU, iter = penalized_likelihood_hungarian(pM, pU, compsum, priorM, priorU, penalty, tol = tol, maxIter = maxIter, cluster = cluster)
+
+        for row in 1:astate.nrow
+            if prevrow2col[row] != astate.r2c[row]
+                
+                #record if deletion or move (not additions)
+                if !iszero(prevrow2col[row])
+                    push!(outrows, row)
+                    push!(outcols, prevrow2col[row])
+                    push!(outstart, startrow2col[row])
+                    push!(outstop, ii - 1)                    
+                end
+                
+                prevrow2col[row] = astate.r2c[row]
+                startrow2col[row] = ii
+            end
+        end
+        
+        outM = hcat(outM, pM)
+        outU = hcat(outU, pU)
+        push!(outLinks, astate.nassigned)
+        outIter = push!(outIter, iter)
+        push!(penalties, penalty)
+
+        nabove = count(penalized_weights_vector(pM, pU, compsum, penalty) .> 0.0)
+    end
+
+    for row in 1:astate.nrow
+        if !iszero(astate.r2c[row])
+            push!(outrows, row)
+            push!(outcols, prevrow2col[row])
+            push!(outstart, startrow2col[row])
+            push!(outstop, ii)                    
+        end
+    end
+    
+    return ParameterChain([outrows outcols outstart outstop], outLinks, permutedims(outM), permutedims(outU), length(outLinks), true), penalties, outIter
+end
+
+function penalized_likelihood_search_auction(pM0::Array{G, 1}, pU0::Array{G, 1},
+                                             compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                                             priorM::Array{T, 1}, priorU::Array{T, 1},
+                                             penalty0::Real = 0.0, mininc::Real = 0.0;
+                                             epsiscale::T = T(0.2), minmargin::T = zero(T), digt::Integer = 5,
+                                             tol::AbstractFloat = 0.0, maxIter::Integer = 100,
+                                             cluster::Bool = true, update::Bool = true, verbose::Bool = false,
+                                             logfile::String = "log.txt",
+                                             logflag::Bool = false) where {G <: AbstractFloat, T <: Real}
+    
+    pseudoM = priorM - ones(T, length(priorM))
+    pseudoU = priorU - ones(T, length(priorU))
+
+    outrows, outcols, outstart, outstop = Int[], Int[], Int[], Int[]
+        
+    #Solver for first value
+    astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, penalty0, epsiscale = epsiscale, minmargin = minmargin, digt = digt, tol = tol, maxIter = maxIter, cluster = cluster, update = update)
+    penalty = copy(penalty0)
+    nabove = count(penalized_weights_vector(pM, pU, compsum, penalty0) .> 0.0)
+    outLinks = [astate.nassigned]
+    outM = reshape(pM, (length(pM), 1))
+    outU = reshape(pU, (length(pM), 1))
+    outIter = [iter]
+    penalties = [penalty0]
+
+    prevrow2col = copy(astate.r2c)
+    startrow2col = ones(Int, astate.nrow) #zeros(Int, length(currrow2col))
+    
+    ii = 1
+    
+    while nabove > 1
+        if verbose
+            println("penalty: $penalty, matches: $(astate.nassigned), nabove: $nabove")
+        end
+        if logflag
+            open(logfile, "a") do f
+                write(f, Dates.format(now(), "yyyy-mm-dd HH:MM:SS"), "\n")
+                write(f, "penalty: $penalty, matches: $(astate.nassigned), nabove: $nabove\n\n")
+            end
+        end
+        ii += 1
+        penalty, nabove = next_penalty(astate.r2c, pM, pU, compsum, penalty, mininc)
+
+        #Delete matches that would be excluded by the increased penalty
+        w = penalized_weights_vector(pM, pU, compsum, penalty)
+        for row in 1:astate.nrow
+            if !iszero(astate.r2c[row]) #should be handled... [row] < compsum.ncol
+                if iszero(w[compsum.obsidx[row, astate.r2c[row]]])
+                    astate.c2r[astate.r2c[row]] = 0
+                    astate.r2c[row] = 0
+                    astate.nassigned -= 1
+                end
+            end
+        end
+        pM, pU = max_MU(astate.r2c, compsum, pseudoM, pseudoU)
+
+        astate, pM, pU, iter = penalized_likelihood_auction(pM, pU, compsum, priorM, priorU, penalty, epsiscale = epsiscale, minmargin = minmargin, digt = digt, tol = tol, maxIter = maxIter, cluster = cluster, update = update)
+
+        for row in 1:astate.nrow
+            if prevrow2col[row] != astate.r2c[row]
+                
+                #record if deletion or move (not additions)
+                if !iszero(prevrow2col[row])
+                    push!(outrows, row)
+                    push!(outcols, prevrow2col[row])
+                    push!(outstart, startrow2col[row])
+                    push!(outstop, ii - 1)                    
+                end
+                
+                prevrow2col[row] = astate.r2c[row]
+                startrow2col[row] = ii
+            end
+        end
+        
+        outM = hcat(outM, pM)
+        outU = hcat(outU, pU)
+        push!(outLinks, astate.nassigned)
+        outIter = push!(outIter, iter)
+        push!(penalties, penalty)
+
+        nabove = count(penalized_weights_vector(pM, pU, compsum, penalty) .> 0.0)
+    end
+
+    for row in 1:astate.nrow
+        if !iszero(astate.r2c[row])
+            push!(outrows, row)
+            push!(outcols, prevrow2col[row])
+            push!(outstart, startrow2col[row])
+            push!(outstop, ii)                    
+        end
+    end
+    
+    return ParameterChain([outrows outcols outstart outstop], outLinks, permutedims(outM), permutedims(outU), length(outLinks), true), penalties, outIter
 end
 
 """
