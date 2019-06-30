@@ -238,7 +238,7 @@ function map_solver_search(pM0::Array{G, 1}, pU0::Array{G, 1},
     outstop = Int[]
     
     #Solver for first value
-    row2col, pM, pU, iter = map_solver(pM0, pU0, compsum, priorM, priorU, penalty0, maxIter = maxIter)
+    row2col, pM, pU, iter = map_solver(pM0, pU0, compsum, priorM, priorU, penalty0, maxIter = maxIter, verbose = verbose)
     penalty = copy(penalty0)
     nabove = count(penalized_weights_vector(pM, pU, compsum, penalty0) .> 0.0)
     outLinks = [count(.!iszero.(row2col))]
@@ -276,7 +276,7 @@ function map_solver_search(pM0::Array{G, 1}, pU0::Array{G, 1},
         end
         pM, pU = max_MU(row2col, compsum, pseudoM, pseudoU)
 
-        row2col, pM, pU, iter = map_solver(pM, pU, compsum, priorM, priorU, penalty, maxIter = maxIter)
+        row2col, pM, pU, iter = map_solver(pM, pU, compsum, priorM, priorU, penalty, maxIter = maxIter, verbose = verbose)
 
         for row in 1:length(row2col)
             if prevrow2col[row] != row2col[row]
@@ -331,7 +331,7 @@ function penalized_likelihood_search_hungarian(pM0::Array{G, 1}, pU0::Array{G, 1
     outrows, outcols, outstart, outstop = Int[], Int[], Int[], Int[]
         
     #Solver for first value
-    astate, pM, pU, iter = penalized_likelihood_hungarian(pM0, pU0, compsum, priorM, priorU, penalty0, tol = tol, maxIter = maxIter, cluster = cluster)
+    astate, pM, pU, iter = penalized_likelihood_hungarian(pM0, pU0, compsum, priorM, priorU, penalty0, tol = tol, maxIter = maxIter, cluster = cluster, verbose = verbose)
     penalty = copy(penalty0)
     nabove = count(penalized_weights_vector(pM, pU, compsum, penalty0) .> 0.0)
     outLinks = [astate.nassigned]
@@ -371,7 +371,7 @@ function penalized_likelihood_search_hungarian(pM0::Array{G, 1}, pU0::Array{G, 1
         end
         pM, pU = max_MU(astate.r2c, compsum, pseudoM, pseudoU)
 
-        astate, pM, pU, iter = penalized_likelihood_hungarian(pM, pU, compsum, priorM, priorU, penalty, tol = tol, maxIter = maxIter, cluster = cluster)
+        astate, pM, pU, iter = penalized_likelihood_hungarian(pM, pU, compsum, priorM, priorU, penalty, tol = tol, maxIter = maxIter, cluster = cluster, verbose = verbose)
 
         for row in 1:astate.nrow
             if prevrow2col[row] != astate.r2c[row]
@@ -426,7 +426,7 @@ function penalized_likelihood_search_auction(pM0::Array{G, 1}, pU0::Array{G, 1},
     outrows, outcols, outstart, outstop = Int[], Int[], Int[], Int[]
         
     #Solver for first value
-    astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, penalty0, epsiscale = epsiscale, minmargin = minmargin, digt = digt, tol = tol, maxIter = maxIter, cluster = cluster, update = update)
+    astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, penalty0, epsiscale = epsiscale, minmargin = minmargin, digt = digt, tol = tol, maxIter = maxIter, cluster = cluster, update = update, verbose = verbose)
     penalty = copy(penalty0)
     nabove = count(penalized_weights_vector(pM, pU, compsum, penalty0) .> 0.0)
     outLinks = [astate.nassigned]
@@ -466,7 +466,7 @@ function penalized_likelihood_search_auction(pM0::Array{G, 1}, pU0::Array{G, 1},
         end
         pM, pU = max_MU(astate.r2c, compsum, pseudoM, pseudoU)
 
-        astate, pM, pU, iter = penalized_likelihood_auction(pM, pU, compsum, priorM, priorU, penalty, epsiscale = epsiscale, minmargin = minmargin, digt = digt, tol = tol, maxIter = maxIter, cluster = cluster, update = update)
+        astate, pM, pU, iter = penalized_likelihood_auction(pM, pU, compsum, priorM, priorU, penalty, epsiscale = epsiscale, minmargin = minmargin, digt = digt, tol = tol, maxIter = maxIter, cluster = cluster, update = update, verbose = verbose)
 
         for row in 1:astate.nrow
             if prevrow2col[row] != astate.r2c[row]

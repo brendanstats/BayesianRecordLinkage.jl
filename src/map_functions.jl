@@ -40,8 +40,7 @@ function penalized_likelihood_hungarian(pM0::Array{G, 1}, pU0::Array{G, 1},
         if verbose
             println("Iteration: $iter")
             println("pM: $prevM")
-            nmatch = astate.nassigned
-            println("Matches: $nmatch")
+            println("Matches: $(astate.nassigned)")
         end
         
         prevM = pM
@@ -84,8 +83,7 @@ function penalized_likelihood_cluster_hungarian(pM0::Array{G, 1}, pU0::Array{G, 
         if verbose
             println("Iteration: $iter")
             println("pM: $prevM")
-            nmatch = astate.nassigned
-            println("Matches: $nmatch")
+            println("Matches: $(astate.nassigned)")
         end
         
         prevM = pM
@@ -157,8 +155,7 @@ function penalized_likelihood_auction(pM0::Array{G, 1}, pU0::Array{G, 1},
         if verbose
             println("Iteration: $iter")
             println("pM: $prevM")
-            nmatch = astate.nassigned
-            println("Matches: $nmatch")
+            println("Matches: $(astate.nassigned)")
         end
         
         prevM = pM
@@ -207,8 +204,7 @@ function penalized_likelihood_cluster_auction(pM0::Array{G, 1}, pU0::Array{G, 1}
         if verbose
             println("Iteration: $iter")
             println("pM: $prevM")
-            nmatch = astate.nassigned
-            println("Matches: $nmatch")
+            println("Matches: $(astate.nassigned)")
         end
         
         prevM = pM
@@ -258,8 +254,7 @@ function penalized_likelihood_auction_update(pM0::Array{G, 1}, pU0::Array{G, 1},
         if verbose
             println("Iteration: $iter")
             println("pM: $prevM")
-            nmatch = astate.nassigned
-            println("Matches: $nmatch")
+            println("Matches: $(astate.nassigned)")
         end
         
         prevM = pM
@@ -310,8 +305,7 @@ function penalized_likelihood_cluster_auction_update(pM0::Array{G, 1}, pU0::Arra
         if verbose
             println("Iteration: $iter")
             println("pM: $prevM")
-            nmatch = astate.nassigned
-            println("Matches: $nmatch")
+            println("Matches: $(astate.nassigned)")
         end
         
         prevM = pM

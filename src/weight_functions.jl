@@ -256,7 +256,7 @@ function penalized_weights_matrix(pweightvec::Array{T, 1}, compsum::SparseCompar
     
     rows = Array{Int64}(undef, n)
     cols = Array{Int64}(undef, n)
-    pweights = Array{T}(n)
+    pweights = Array{T}(undef, n)
 
     ii = 0
     
