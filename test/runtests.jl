@@ -104,6 +104,126 @@ maximum(abs.(exp.(w1) - w2))
 #map_solver(pM0, pU0, comparisonSummary, [priorM], [priorU], penalty; maxIter) -> matchRows, matchColumns, pM, pU, iterations
 #map_solver_iter(pM0, pU0, comparisonSummary, [priorM], [priorU], penaltyRng; maxIter) -> matchRows, matchColumns, pM, pU, iterations
 
+using BayesianRecordLinkage, DelimitedFiles
+
+##Priors                                                                                                                                                        
+priorM = repeat([1.9, 1.1], outer = 3)
+priorU = repeat([1.1, 1.9], outer = 3)
+lpriorC(nadd::Integer, C::LinkMatrix) = betabipartite_logratiopn(nadd, C, 1.0, 1.0)
+
+##Initial values                                                                                                                                                
+pM0 = repeat([0.9, 0.1], outer = 3)
+pU0 = repeat([0.1, 0.9], outer = 3)
+p0 = 30.0 / 1530.0
+
+########################################
+#Load data and generate comparison vectors
+########################################
+
+A = readdlm("data/exampleA.dat", Int64, header = true)[1][:, 2:end]
+B = readdlm("data/exampleB.dat", Int64, header = true)[1][:, 2:end]
+
+permA = sortperm(A[:, 2])
+permB = sortperm(B[:, 2])
+
+A = A[permA, :]
+B = B[permB, :]
+
+data = [A[ii, kk] == B[jj, kk] for ii in 1:size(A, 1), jj in 1:size(B, 1), kk in 1:size(A, 2)]
+compsum = ComparisonSummary(data)
+
+priorM = repeat([1.9, 1.1], outer = 3)
+priorU = repeat([1.1, 1.9], outer = 3)
+pM0 = repeat([0.9, 0.1], outer = 3)
+pU0 = repeat([0.1, 0.9], outer = 3)
+penalty0 = 0.0
+tol = 0
+digt = 5
+minmargin = 0.0
+maxIter = 100
+cluster = false
+update = false
+
+wpenalized = penalized_weights_vector(pM0, pU0, compsum, penalty0)
+
+@time r2c, pM, pU, iter = map_solver(pM0, pU0, compsum, priorM, priorU, 0.0)
+@time r2c, pM, pU, iter = map_solver(pM, pU, compsum, priorM, priorU, 0.24)
+@time r2c, pM, pU, iter = map_solver(pM, pU, compsum, priorM, priorU, 2.552)
+pM
+count(.!iszero.(r2c))
+
+@time astate, pM, pU, iter = penalized_likelihood_hungarian(pM0, pU0, compsum, priorM, priorU, 0.0, cluster = false)
+@time astate, pM, pU, iter = penalized_likelihood_hungarian(pM, pU, compsum, priorM, priorU, 0.24, cluster = false)
+@time astate, pM, pU, iter = penalized_likelihood_hungarian(pM, pU, compsum, priorM, priorU, 2.552, cluster = false)
+pM
+astate.nassigned
+
+@time astate, pM, pU, iter = penalized_likelihood_hungarian(pM0, pU0, compsum, priorM, priorU, 0.0, cluster = true)
+@time astate, pM, pU, iter = penalized_likelihood_hungarian(pM, pU, compsum, priorM, priorU, 0.24, cluster = true)
+@time astate, pM, pU, iter = penalized_likelihood_hungarian(pM, pU, compsum, priorM, priorU, 2.552, cluster = true)
+pM
+astate.nassigned
+
+@time astate, pM, pU, iter = penalized_likelihood_cluster_hungarian(pM0, pU0, compsum, priorM, priorU, 0.0)
+@time astate, pM, pU, iter = penalized_likelihood_cluster_hungarian(pM, pU, compsum, priorM, priorU, 0.24)
+@time astate, pM, pU, iter = penalized_likelihood_cluster_hungarian(pM, pU, compsum, priorM, priorU, 2.552)
+pM
+astate.nassigned
+
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, 0.0, cluster = false, update = false)
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM, pU, compsum, priorM, priorU, 0.24, cluster = false, update = false)
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM, pU, compsum, priorM, priorU, 2.552, cluster = false, update = false)
+pM
+astate.nassigned
+
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, 0.0, cluster = true, update = false)
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM, pU, compsum, priorM, priorU, 0.24, cluster = true, update = false)
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM, pU, compsum, priorM, priorU, 2.552, cluster = true, update = false)
+pM
+astate.nassigned
+
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, 0.0, cluster = true, update = false)
+@time astate, pM, pU, iter = penalized_likelihood_cluster_auction(pM0, pU0, compsum, priorM, priorU, 0.0)
+@time astate, pM, pU, iter = penalized_likelihood_cluster_auction(pM, pU, compsum, priorM, priorU, 0.24)
+@time astate, pM, pU, iter = penalized_likelihood_cluster_auction(pM, pU, compsum, priorM, priorU, 2.552)
+pM
+astate.nassigned
+
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, 0.0, cluster = false, update = true)
+@time penalized_likelihood_auction_update(pM0, pU0, compsum, priorM, priorU, 0.0)
+@time penalized_likelihood_auction_update(pM0, pU0, compsum, priorM, priorU, 0.24)
+@time penalized_likelihood_auction_update(pM0, pU0, compsum, priorM, priorU, 2.552)
+pM
+astate.nassigned
+
+@time astate, pM, pU, iter = penalized_likelihood_auction(pM0, pU0, compsum, priorM, priorU, 0.0, cluster = true, update = true)
+@time penalized_likelihood_cluster_auction_update(pM0, pU0, compsum, priorM, priorU, 0.0)
+@time penalized_likelihood_cluster_auction_update(pM0, pU0, compsum, priorM, priorU, 0.24)
+@time penalized_likelihood_cluster_auction_update(pM0, pU0, compsum, priorM, priorU, 2.552)
+
+@time pchain, penalties, iter = penalized_likelihood_search_hungarian(pM0, pU0, compsum, priorM, priorU, 0.0, 0.01, cluster = false)
+pchain.nlinks
+pchain.pM
+@time pchain, penalties, iter = penalized_likelihood_search_hungarian(pM0, pU0, compsum, priorM, priorU, 0.0, 0.01, cluster = true)
+pchain.nlinks
+pchain.pM
+
+@time pchain, penalties, iter = penalized_likelihood_search_auction(pM0, pU0, compsum, priorM, priorU, 0.0, 0.01, cluster = false, update = false)
+pchain.nlinks
+pchain.pM
+
+@time pchain, penalties, iter = penalized_likelihood_search_auction(pM0, pU0, compsum, priorM, priorU, 0.0, 0.01, cluster = true,  update = false)
+pchain.nlinks
+pchain.pM
+
+@time pchain, penalties, iter = penalized_likelihood_search_auction(pM0, pU0, compsum, priorM, priorU, 0.0, 0.01, cluster = false, update = true)
+pchain.nlinks
+pchain.pM
+
+@time pchain, penalties, iter = penalized_likelihood_search_auction(pM0, pU0, compsum, priorM, priorU, 0.0, 0.01, cluster = true,  update = true)
+pchain.nlinks
+pchain.pM
+
 ########################################
 #Test linkmatrix.jl
 ########################################
