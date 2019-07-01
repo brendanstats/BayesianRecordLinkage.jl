@@ -107,7 +107,7 @@ function get_linkcounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: 
 end
 
 function get_linkstagecounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: AbstractFloat}
-        if pchain.linktrace
+    if pchain.linktrace
         ctDict = DefaultDict{Tuple{Int, Int, Int}, Int}(zero(Int))
         for ii in 1:size(pchain.C, 1)
             ctDict[(pchain.C[ii, 1], pchain.C[ii, 2], pchain.C[ii, 3])] += pchain.C[ii, end] + one(Int) - pchain.C[ii, end - 1]
@@ -121,8 +121,36 @@ function get_linkstagecounts(pchain::ParameterChain{G, T}) where {G <: Integer, 
             outC[ii, 3] = ky[3]
             outC[ii, 4] = vl
         end
-           return outC 
+        return outC 
     else
         return pchain.C
     end
+end
+
+"""
+    get_steplinks(n::Integer, pchain::ParameterChain)
+
+Return the set of rows and columns linked in step `n` as a tuple (rows, cols)
+"""
+function get_steplinks(n::Integer, pchain::ParameterChain)
+    if !pchain.linktrace
+        error("pchain.linktrace must equal true" )
+    end
+    keep = pchain.C[:, (end - 1)] .<= n) .* (pchain.C[:, end] .>= n)
+    return pchain.C[keep, 1], pchain.C[keep, 2]
+end
+
+"""
+    get_segmentlinks(nstart::Integer, nstop::Integer, pchain::ParameterChain)
+
+Return the set of rows and columns linked for all steps (inclusive) from nstart through nstop.
+"""
+function get_segmentlinks(nstart::Integer, nstop::Integer, pchain::ParameterChain)
+    if !pchain.linktrace
+        error("pchain.linktrace must equal true" )
+    elseif nstart > nstop
+        error("nstart must be <= nstop" )
+    end
+    keep = pchain.C[:, (end - 1)] .<= nstart) .* (pchain.C[:, end] .>= nstop)
+    return pchain.C[keep, 1], pchain.C[keep, 2]
 end

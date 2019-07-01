@@ -43,7 +43,9 @@ export LinkMatrix,
 export ParameterChain,
     counts2indicies,
     get_linkcounts,
-    get_linkstagecounts
+    get_linkstagecounts,
+    get_steplinks,
+    get_segmentlinks
 export PosthocBlocks,
     label2dict
 export E_step,
