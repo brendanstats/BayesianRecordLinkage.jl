@@ -151,6 +151,6 @@ function get_segmentlinks(nstart::Integer, nstop::Integer, pchain::ParameterChai
     elseif nstart > nstop
         error("nstart must be <= nstop" )
     end
-    keep = pchain.C[:, (end - 1)] .<= nstart) .* (pchain.C[:, end] .>= nstop)
+    keep = (pchain.C[:, (end - 1)] .<= nstart) .* (pchain.C[:, end] .>= nstop)
     return pchain.C[keep, 1], pchain.C[keep, 2]
 end
