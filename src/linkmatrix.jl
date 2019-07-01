@@ -291,3 +291,16 @@ Copy `C` and then where `newrow` currnetly linked to `col` and `row` currently l
 See also: [`add_link`](@ref), [`remove_link`](@ref), [`rowswitch_link`](@ref), [`colswitch_link`](@ref), [`doubleswitch_link!`](@ref), [`LinkMatirx`](@ref)
 """
 doubleswitch_link(newrow::G, newcol::G, C::LinkMatrix) where G <: Integer = doubleswitch_link!(newrow, newcol, deepcopy(C))
+
+"""
+    tuple2links(rows::Array{G, 1}, cols::Array{G, 1}, nrow::G) where G <: Integer
+
+Transform a tuple of link pairs into row2col format of a `LinkMatrix` object.
+"""
+function tuple2links(rows::Array{G, 1}, cols::Array{G, 1}, nrow::G) where G <: Integer
+    row2col = zeros(G, nrow)
+    for (ii, jj) in zip(rows, cols)
+        row2col[ii] = jj
+    end
+    return row2col
+end
