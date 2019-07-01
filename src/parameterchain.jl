@@ -136,7 +136,7 @@ function get_steplinks(n::Integer, pchain::ParameterChain)
     if !pchain.linktrace
         error("pchain.linktrace must equal true" )
     end
-    keep = pchain.C[:, (end - 1)] .<= n) .* (pchain.C[:, end] .>= n)
+    keep = (pchain.C[:, (end - 1)] .<= n) .* (pchain.C[:, end] .>= n)
     return pchain.C[keep, 1], pchain.C[keep, 2]
 end
 
