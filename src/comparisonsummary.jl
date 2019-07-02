@@ -1,4 +1,3 @@
-
 """
     ComparisonSummary{G <: Integer, T <: Integer}
 
@@ -274,7 +273,7 @@ function ComparisonSummary(comparisons::Array{Bool, 3})
     return ComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
 end
 
-function ComparisonSummary(comparisons::Array{G, 3}, nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, 1:2))) where G <: Integer
+function ComparisonSummary(comparisons::Array{G, 3}, nlevels::Array{Int64, 1} = Int64.(vec(maximum(comparisons, dims=[1,2])))) where G <: Integer
 
     nrow, ncol, ncomp = size(comparisons)
     cmap, levelmap, cadj = mapping_variables(nlevels)
