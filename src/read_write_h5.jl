@@ -1,9 +1,10 @@
 function h5write_ComparisonSummary(filename::String,
                                    compsum::ComparisonSummary,
                                    groupname::String = "/",
-                                   mode::String = "w")
+                                   mode::String = "w",
+                                   complevel::Integer = 7)
     h5open(filename, mode) do writef
-        writef[groupname * "/" * "obsidx", "chunk", (size(compsum.obsidx)), "shuffle", (), "compress", 7] = compsum.obsidx
+        writef[groupname * "/" * "obsidx", "chunk", (size(compsum.obsidx)), "shuffle", (), "compress", complevel] = compsum.obsidx
         writef[groupname * "/" * "obsvecs"] = compsum.obsvecs
         writef[groupname * "/" * "obsvecct"] = compsum.obsvecct
         writef[groupname * "/" * "counts"] = compsum.counts
@@ -45,14 +46,15 @@ function h5write_SparseComparisonSummary(filename::String,
                                          compsum::SparseComparisonSummary;
                                          groupname::String = "/",
                                          mode::String = "w",
-                                         maxlen::Int64 = 600000000)
+                                         maxlen::Integer = 600000000,
+                                         complevel::Integer = 7)
     chunklen = min(maxlen, length(compsum.obsidx.rowval))
     h5open(filename, mode) do writef
         writef[groupname * "/" * "m"] = compsum.obsidx.m
         writef[groupname * "/" * "n"] = compsum.obsidx.n
         writef[groupname * "/" * "colptr"] = compsum.obsidx.colptr
-        writef[groupname * "/" * "rowval", "chunk", (chunklen), "shuffle", (), "compress", 7] = compsum.obsidx.rowval
-        writef[groupname * "/" * "nzval", "chunk", (chunklen), "shuffle", (), "compress", 7] = compsum.obsidx.nzval
+        writef[groupname * "/" * "rowval", "chunk", (chunklen), "shuffle", (), "compress", complevel] = compsum.obsidx.rowval
+        writef[groupname * "/" * "nzval", "chunk", (chunklen), "shuffle", (), "compress", complevel] = compsum.obsidx.nzval
         writef[groupname * "/" * "obsvecs"] = compsum.obsvecs
         writef[groupname * "/" * "obsvecct"] = compsum.obsvecct
         writef[groupname * "/" * "counts"] = compsum.counts
@@ -99,7 +101,7 @@ function h5write_ConnectedComponents(filename::String,
                                      cc::ConnectedComponents;
                                      groupname::String = "/",
                                      mode::String = "w")
-        h5open(diagnosticsfile, mode) do writef
+        h5open(filename, mode) do writef
             writef[groupname * "/" * "rowLabels"] = cc.rowLabels
             writef[groupname * "/" * "colLabels"] = cc.colLabels
             writef[groupname * "/" * "rowperm"] = cc.rowperm
@@ -134,9 +136,12 @@ end
 function h5write_ParameterChain(filename::String,
                                 pchain::ParameterChain;
                                 groupname::String = "/",
-                                mode::String = "w")
+                                mode::String = "w",
+                                maxlen::Integer = 100000000,
+                                complevel::Integer = 7)
+    chunklen = min(maxlen, size(pchain.C, 1))
     h5open(filename, mode) do writef
-        writef[groupname * "/C"] = pchain.C
+        writef[groupname * "/" * "C", "chunk", (chunklen, size(pchain.C, 2)), "shuffle", (), "compress", complevel] = pchain.C
         writef[groupname * "/nlinks"] = pchain.nlinks
         writef[groupname * "/pM"] = pchain.pM
         writef[groupname * "/pU"] = pchain.pU
