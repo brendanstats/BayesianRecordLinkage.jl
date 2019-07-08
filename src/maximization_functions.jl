@@ -57,7 +57,7 @@ function max_C_hungarian(weightMat::SparseMatrixCSC{T}, maxw::T) where T <: Abst
     cost = reward2cost(Matrix(weightMat), maxw)
     astate = hungarian_assignment(cost)
     for (ii, jj) in pairs(astate.r2c)
-        if iszero(weightMat[ii, jj])
+        if !iszero(jj) && iszero(weightMat[ii, jj])
             astate.r2c[ii] = 0
             astate.c2r[jj] = 0
             astate.nassigned -= 1
