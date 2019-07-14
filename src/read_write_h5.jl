@@ -141,7 +141,10 @@ function h5write_ParameterChain(filename::String,
                                 complevel::Integer = 7)
     chunklen = min(maxlen, size(pchain.C, 1))
     h5open(filename, mode) do writef
-        writef[groupname * "/" * "C", "chunk", (chunklen, size(pchain.C, 2)), "shuffle", (), "compress", complevel] = pchain.C
+        if !exists(writef, groupname)
+            g_create(writef, groupname)
+        end
+        writef[groupname * "/C", "chunk", (chunklen, size(pchain.C, 2)), "shuffle", (), "compress", complevel] = pchain.C
         writef[groupname * "/nlinks"] = pchain.nlinks
         writef[groupname * "/pM"] = pchain.pM
         writef[groupname * "/pU"] = pchain.pU
@@ -154,14 +157,12 @@ end
 function h5read_ParameterChain(filename::String,
                                groupname::String = "/",
                                mode::String = "r")
-    return h5open(filename, mode) do readf
-        ParameterChain(readf[groupname * "/C"],
-                       readf[groupname * "/nlinks"],
-                       readf[groupname * "/pM"],
-                       readf[groupname * "/pU"],
-                       readf[groupname * "/nsteps"],
-                       readf[groupname * "/linktrace"])
-    end
+    return ParameterChain(h5read(filename, groupname * "/C"),
+                          h5read(filename, groupname * "/nlinks"),
+                          h5read(filename, groupname * "/pM"),
+                          h5read(filename, groupname * "/pU"),
+                          h5read(filename, groupname * "/nsteps"),
+                          h5read(filename, groupname * "/linktrace"))
 end
 
 function h5write_PosthocBlocks(filename::String,
@@ -191,25 +192,27 @@ function h5read_PosthocBlocks(filename::String,
                               groupname::String = "/",
                               mode::String = "r") where T <: AbstractFloat
     return h5open(filename, mode) do readf
-        G = eltype(readf[groupname * "/" * "rows"][names(readf[groupname * "/" * "rows"])[1]])
+        #G = eltype(readf[groupname * "/" * "rows"][names(readf[groupname * "/" * "rows"])[1]])
+        nblock = read(readf[groupname * "/nblock"])
+        G = eltype(nblock)
         block2rows = Dict{G, Array{G, 1}}()
         block2cols = Dict{G, Array{G, 1}}()
-        for ky in names(readf[groupname * "/" * "rows"])
-            block2rows[G(Meta.parse(ky))] = readf[groupname * "/" * "rows/$ky"]
-        end
-        for ky in names(readf[groupname * "/" * "cols"])
-            block2cols[G(Meta.parse(ky))] = readf[groupname * "/" * "cols/$ky"]
+        for ky in zero(G):nblock
+            if exists(readf, groupname * "/rows/$ky")
+                block2rows[ky] = read(readf[groupname * "/rows/$ky"])
+                block2cols[ky] = read(readf[groupname * "/cols/$ky"])
+            end
         end
         PosthocBlocks(block2rows,
                       block2cols,
-                      readf[groupname * "/blocknrows"],
-                      readf[groupname * "/blockncols"],
-                      readf[groupname * "/blocksingleton"],
-                      readf[groupname * "/blocknnz"],
-                      readf[groupname * "/nrow"],
-                      readf[groupname * "/ncol"],
-                      readf[groupname * "/nblock"],
-                      readf[groupname * "/nnz"])
+                      read(readf[groupname * "/blocknrows"]),
+                      read(readf[groupname * "/blockncols"]),
+                      read(readf[groupname * "/blocksingleton"]),
+                      read(readf[groupname * "/blocknnz"]),
+                      read(readf[groupname * "/nrow"]),
+                      read(readf[groupname * "/ncol"]),
+                      nblock,
+                      read(readf[groupname * "/nnz"]))
     end
 end
 
