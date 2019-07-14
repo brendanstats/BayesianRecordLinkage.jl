@@ -1,4 +1,16 @@
 """
+    prior_mode(prior::Array{<:Real, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary})
+
+Find the prior mode assuming a Dirichlet prior where `prior` contains the parameters for the prior for each feature appended together.  
+"""
+function prior_mode(prior::Array{<:Real, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary})
+    return mapreduce(append!, 1:compsum.ncomp) do ii
+        rng = range(1 + compsum.cadj[ii], length = compsum.nlevels[ii])
+        prior[rng] / sum(prior[rng])
+    end
+end
+
+"""
     max_MU(matchRows, matchColumns, comparisonSummary, pseudoM, pseudoU) -> pM, pU
 
 compute posterior maximums for M and U probabilities assuming a dirichlet prior.
