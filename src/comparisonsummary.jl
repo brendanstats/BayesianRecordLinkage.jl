@@ -342,7 +342,7 @@ end
 
 function SparseComparisonSummary(rows::Array{Ti, 1}, cols::Array{Ti, 1}, comparisons::Array{G, 2},
                                  nrow::Integer = maximum(rows), ncol::Integer = maximum(cols),
-                                 nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, 1))) where {G <: Integer, Ti <: Integer}
+                                 nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, dims = 1))) where {G <: Integer, Ti <: Integer}
     if length(rows) != length(cols)
         error("rows and columns must be the same length")
     end
@@ -368,7 +368,7 @@ end
 
 function SparseComparisonSummary(comparisons::Array{G, 2},
                                  nrow::Int64 = Int64.(maximum(comparisons[:, 1])), ncol::Int64 = Int64.(maximum(comparisons[:, 2])),
-                                 nlevels::Array{Int64, 1} = Int64.(vec(maximum(comparisons, 1))[3:end])) where G <: Integer
+                                 nlevels::Array{Int64, 1} = Int64.(vec(maximum(comparisons, dims = 1))[3:end])) where G <: Integer
 
     ncomp = length(nlevels)
     cmap, levelmap, cadj = mapping_variables(nlevels)    
