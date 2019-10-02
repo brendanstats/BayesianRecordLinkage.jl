@@ -108,7 +108,7 @@ function PosthocBlocks(cc::ConnectedComponents{G}, compsum::SparseComparisonSumm
     block2nnz = zeros(Int, cc.ncomponents)
     for kk in one(G):cc.ncomponents
         for col in block2cols[kk]
-            block2nnz[kk] += count(rowvals(compsum.obsidx)[nzrange(compsum.obsidx, col)] .== kk)
+            block2nnz[kk] += count(cc.rowLabels[rowvals(compsum.obsidx)[nzrange(compsum.obsidx, col)]] .== kk)
         end
     end
 
