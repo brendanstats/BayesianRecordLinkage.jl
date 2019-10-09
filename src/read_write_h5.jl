@@ -1,9 +1,19 @@
+"""
+    h5write_ComparisonSummary(filename::String, compsum::ComparisonSummary; groupname::String = "/", mode::String = "cw", complevel::Integer = 7)
+
+Save `ComparisonSummary` object using HDF5 format with optional compression.
+
+See also: [`h5read_ComparisonSummary`](@ref), [`h5write_SparseComparisonSummary`](@ref), [`h5read_SparseComparisonSummary`](@ref), [`h5write_ConnectedComponents`](@ref), [`h5write_ParameterChain`](@ref), [`h5write_PosthocBlocks`](@ref)
+"""
 function h5write_ComparisonSummary(filename::String,
-                                   compsum::ComparisonSummary,
+                                   compsum::ComparisonSummary;
                                    groupname::String = "/",
-                                   mode::String = "w",
+                                   mode::String = "cw",
                                    complevel::Integer = 7)
     h5open(filename, mode) do writef
+        if !exists(writef, groupname)
+            g_create(writef, groupname)
+        end
         writef[groupname * "/" * "obsidx", "chunk", (size(compsum.obsidx)), "shuffle", (), "compress", complevel] = compsum.obsidx
         writef[groupname * "/" * "obsvecs"] = compsum.obsvecs
         writef[groupname * "/" * "obsvecct"] = compsum.obsvecct
@@ -22,6 +32,13 @@ function h5write_ComparisonSummary(filename::String,
     nothing
 end
 
+"""
+    h5read_ComparisonSummary(filename::String; groupname::String = "/")
+
+Read `ComparisonSummary` object from HDF5 format written by `h5write_ComparisonSummary`.
+
+See also: [`h5write_ComparisonSummary`](@ref), [`h5write_SparseComparisonSummary`](@ref), [`h5read_SparseComparisonSummary`](@ref), [`h5read_ConnectedComponents`](@ref), [`h5read_ParameterChain`](@ref), [`h5read_PosthocBlocks`](@ref)
+"""
 function h5read_ComparisonSummary(filename::String;
                                   groupname::String = "/")
     return ComparisonSummary(
@@ -42,12 +59,19 @@ function h5read_ComparisonSummary(filename::String;
     )
 end
 
+"""
+    h5write_SparseComparisonSummary(filename::String, compsum::SparseComparisonSummary; groupname::String = "/", mode::String = "cw", complevel::Integer = 7, maxlen::Integer = 600000000)
+
+Save `SparseComparisonSummary` object using HDF5 format with optional compression.
+
+See also: [`h5read_SparseComparisonSummary`](@ref), [`h5write_ComparisonSummary`](@ref), [`h5read_ComparisonSummary`](@ref), [`h5write_ConnectedComponents`](@ref), [`h5write_ParameterChain`](@ref), [`h5write_PosthocBlocks`](@ref)
+"""
 function h5write_SparseComparisonSummary(filename::String,
                                          compsum::SparseComparisonSummary;
                                          groupname::String = "/",
-                                         mode::String = "w",
-                                         maxlen::Integer = 600000000,
-                                         complevel::Integer = 7)
+                                         mode::String = "cw",
+                                         complevel::Integer = 7,
+                                         maxlen::Integer = 600000000)
     chunklen = min(maxlen, length(compsum.obsidx.rowval))
     h5open(filename, mode) do writef
         writef[groupname * "/" * "m"] = compsum.obsidx.m
@@ -72,6 +96,13 @@ function h5write_SparseComparisonSummary(filename::String,
     nothing
 end
 
+"""
+    h5read_SparseComparisonSummary(filename::String; groupname::String = "/")
+
+Read `SparseComparisonSummary` object from HDF5 format written by `h5write_SparseComparisonSummary`.
+
+See also: [`h5write_SparseComparisonSummary`](@ref), [`h5write_ComparisonSummary`](@ref), [`h5read_ComparisonSummary`](@ref), [`h5read_ConnectedComponents`](@ref), [`h5read_ParameterChain`](@ref), [`h5read_PosthocBlocks`](@ref)
+"""
 function h5read_SparseComparisonSummary(filename::String;
                                         groupname::String = "/")
     return SparseComparisonSummary(
@@ -97,10 +128,17 @@ function h5read_SparseComparisonSummary(filename::String;
     )
 end
 
+"""
+    h5write_ConnectedComponents(filename::String, cc::ConnectedComponents; groupname::String = "/", mode::String = "cw")
+
+Save `ConnectedComponents` object using HDF5 format.
+
+See also: [`h5read_ConnectedComponents`](@ref), [`h5write_ComparisonSummary`](@ref), [`h5write_SparseComparisonSummary`](@ref), [`h5write_ParameterChain`](@ref), [`h5write_PosthocBlocks`](@ref)
+"""
 function h5write_ConnectedComponents(filename::String,
                                      cc::ConnectedComponents;
                                      groupname::String = "/",
-                                     mode::String = "w")
+                                     mode::String = "cw")
         h5open(filename, mode) do writef
             writef[groupname * "/" * "rowLabels"] = cc.rowLabels
             writef[groupname * "/" * "colLabels"] = cc.colLabels
@@ -117,7 +155,15 @@ function h5write_ConnectedComponents(filename::String,
     nothing
 end
 
-function h5read_ConnectedComponents(filename::String; groupname::String = "/")
+"""
+    h5read_ConnectedComponents(filename::String; groupname::String = "/")
+
+Read `ConnectedComponents` object from HDF5 format written by `h5write_ConnectedComponents`.
+
+See also: [`h5write_ConnectedComponents`](@ref), [`h5read_ComparisonSummary`](@ref), [`h5read_SparseComparisonSummary`](@ref), [`h5read_ParameterChain`](@ref), [`h5read_PosthocBlocks`](@ref)
+"""
+function h5read_ConnectedComponents(filename::String;
+                                    groupname::String = "/")
     return ConnectedComponents(
         h5read(filename, groupname * "/" * "rowLabels"),
         h5read(filename, groupname * "/" * "colLabels"),
@@ -133,12 +179,19 @@ function h5read_ConnectedComponents(filename::String; groupname::String = "/")
     )
 end
 
+"""
+    h5write_ParameterChain(filename::String, pchain::ParameterChain; groupname::String = "/", mode::String = "cw", complevel::Integer = 7, maxlen::Integer = 100000000)
+
+Save `ParameterChain` object using HDF5 format with optional compression.
+
+See also: [`h5read_ParameterChain`](@ref), , [`h5write_ComparisonSummary`](@ref), [`h5write_SparseComparisonSummary`](@ref), [`h5write_ConnectedComponents`](@ref), [`h5write_PosthocBlocks`](@ref)
+"""
 function h5write_ParameterChain(filename::String,
                                 pchain::ParameterChain;
                                 groupname::String = "/",
-                                mode::String = "w",
-                                maxlen::Integer = 100000000,
-                                complevel::Integer = 7)
+                                mode::String = "cw",
+                                complevel::Integer = 7,
+                                maxlen::Integer = 100000000)
     chunklen = min(maxlen, size(pchain.C, 1))
     h5open(filename, mode) do writef
         if !exists(writef, groupname)
@@ -154,9 +207,15 @@ function h5write_ParameterChain(filename::String,
     nothing
 end
 
-function h5read_ParameterChain(filename::String,
-                               groupname::String = "/",
-                               mode::String = "r")
+"""
+    h5read_ParameterChain(filename::String, compsum::ParameterChain; groupname::String = "/", mode::String = "cw", complevel::Integer = 7)
+
+Read `ParameterChain` object from HDF5 format written by `h5write_ParameterChain`.
+
+See also: [`h5write_ParameterChain`](@ref), [`h5read_ComparisonSummary`](@ref), [`h5read_SparseComparisonSummary`](@ref), [`h5read_ConnectedComponents`](@ref), [`h5read_PosthocBlocks`](@ref)
+"""
+function h5read_ParameterChain(filename::String;
+                               groupname::String = "/")
     return ParameterChain(h5read(filename, groupname * "/C"),
                           h5read(filename, groupname * "/nlinks"),
                           h5read(filename, groupname * "/pM"),
@@ -165,10 +224,17 @@ function h5read_ParameterChain(filename::String,
                           h5read(filename, groupname * "/linktrace"))
 end
 
+"""
+    h5write_PosthocBlocks(filename::String, phb::PosthocBlocks; groupname::String = "/", mode::String = "cw")
+
+Save `PosthocBlocks` object using HDF5 format.
+
+See also: [`h5read_PosthocBlocks`](@ref), [`h5write_ComparisonSummary`](@ref), [`h5write_SparseComparisonSummary`](@ref), [`h5write_ConnectedComponents`](@ref), [`h5write_ParameterChain`](@ref)
+"""
 function h5write_PosthocBlocks(filename::String,
                                phb::PosthocBlocks;
                                groupname::String = "/",
-                               mode::String = "w") where T <: AbstractFloat
+                               mode::String = "cw")
     h5open(filename, mode) do writef
         for (ky, vl) in phb.block2rows
             writef[groupname * "/" * "rows/$ky"] = vl
@@ -188,11 +254,16 @@ function h5write_PosthocBlocks(filename::String,
     nothing
 end
 
-function h5read_PosthocBlocks(filename::String,
-                              groupname::String = "/",
-                              mode::String = "r") where T <: AbstractFloat
-    return h5open(filename, mode) do readf
-        #G = eltype(readf[groupname * "/" * "rows"][names(readf[groupname * "/" * "rows"])[1]])
+"""
+    h5read_PosthocBlocks(filename::String; groupname::String = "/")
+
+Read `PosthocBlocks` object from HDF5 format written by `h5write_PosthocBlocks`.
+
+See also: [`h5write_PosthocBlocks`](@ref), [`h5read_ComparisonSummary`](@ref), [`h5read_SparseComparisonSummary`](@ref), [`h5read_ConnectedComponents`](@ref), [`h5read_ParameterChain`](@ref)
+"""
+function h5read_PosthocBlocks(filename::String;
+                              groupname::String = "/")
+    return h5open(filename, "r") do readf
         nblock = read(readf[groupname * "/nblock"])
         G = eltype(nblock)
         block2rows = Dict{G, Array{G, 1}}()
@@ -214,57 +285,4 @@ function h5read_PosthocBlocks(filename::String,
                       nblock,
                       read(readf[groupname * "/nnz"]))
     end
-end
-
-function h5write_penalized_likelihood_estimate(filename::String,
-                                               priorM::Array{T, 1},
-                                               priorU::Array{T, 1},
-                                               pM0::Array{T, 1},
-                                               pU0::Array{T, 1},
-                                               matches::Dict{Int64,Tuple{Array{Int64,1},Array{Int64,1}}},
-                                               pM::Array{T, 2},
-                                               pU::Array{T, 2},
-                                               penalties::Array{T, 1},
-                                               runtime::Real = -1.0;
-                                               groupname::String = "/",
-                                               mode::String = "w") where T <: AbstractFloat
-    nlinks = [length(matches[ii][1]) for ii in 1:length(penalties)]
-    h5open(filename, mode) do writef
-        writef[groupname * "/" * "priorM"] = priorM
-        writef[groupname * "/" * "priorU"] = priorU
-        writef[groupname * "/" * "penalties"] = penalties
-        writef[groupname * "/" * "nlinks"] = nlinks
-        for (ky, vl) in matches
-            writef[groupname * "/" * "matches/$ky/mrows"] = vl[1]
-            writef[groupname * "/" * "matches/$ky/mcols"] = vl[2]
-        end
-        writef[groupname * "/" * "pM"] = pM
-        writef[groupname * "/" * "pU"] = pU
-        writef[groupname * "/" * "pM0"] = pM0
-        writef[groupname * "/" * "pU0"] = pU0
-        writef[groupname * "/" * "runtime"] = runtime
-    end
-    nothing
-end
-
-function h5write_clustering_diagnostics(filename::String,
-                                        ncluster::Array{<:Integer, 1},
-                                        maxdim::Array{<:Integer, 1},
-                                        npairs::Array{<:Integer, 1},
-                                        npairscomp::Array{<:Integer, 1},
-                                        nsingle::Array{<:Integer, 1},
-                                        ndouble::Array{<:Integer, 1},
-                                        penalties::Array{<:AbstractFloat, 1};
-                                        groupname::String = "/",
-                                        mode::String = "w")
-    h5open(filename, mode) do writef
-        writef[groupname * "/" * "ncluster"] = ncluster
-        writef[groupname * "/" * "maxdim"] = maxdim
-        writef[groupname * "/" * "nsingle"] = nsingle
-        writef[groupname * "/" * "ndouble"] = ndouble
-        writef[groupname * "/" * "npairs"] = npairs
-        writef[groupname * "/" * "npairscomp"] = npairscomp
-        writef[groupname * "/" * "penalties"] = penalties
-    end
-    nothing
 end
