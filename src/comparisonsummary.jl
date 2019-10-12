@@ -348,11 +348,11 @@ function SparseComparisonSummary(rows::Array{Ti, 1}, cols::Array{Ti, 1}, compari
     end
 
     nunique = prod(nlevels .+ 1)
-    if size(nunique, 1) < typemax(Int8)
+    if nunique < typemax(Int8)
         Tv = Int8
-    elseif size(nunique, 1) < typemax(Int16)
+    elseif nunique < typemax(Int16)
         Tv = Int16
-    elseif size(nunique, 1) < typemax(Int32)
+    elseif nunique < typemax(Int32)
         Tv = Int32
     else
         Tv = Int64
@@ -363,7 +363,38 @@ function SparseComparisonSummary(rows::Array{Ti, 1}, cols::Array{Ti, 1}, compari
     obsidx, obsvecs, obsvecct = comparison_variables(rows, cols, comparisons, nrow, ncol, ncomp, Tv)
     npairs, counts, obsct, misct = count_variables(obsidx, obsvecs, obsvecct, cmap, cadj)
 
-    return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, nlevels, cmap, levelmap, cadj, nrow, ncol, npairs, ncomp)
+    return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, Int64.(nlevels), cmap, levelmap, cadj, Int64(nrow), Int64(ncol), npairs, ncomp)
+end
+
+function SparseComparisonSummary!(rows::Array{Ti, 1}, cols::Array{Ti, 1}, comparisons::Array{G, 2},
+                                 nrow::Integer = maximum(rows), ncol::Integer = maximum(cols),
+                                 nlevels::Array{<:Integer, 1} = vec(maximum(comparisons, dims = 1))) where {G <: Integer, Ti <: Integer}
+    if length(rows) != length(cols)
+        error("rows and columns must be the same length")
+    end
+
+    nunique = prod(nlevels .+ 1)
+    if nunique < typemax(Int8)
+        Tv = Int8
+    elseif nunique < typemax(Int16)
+        Tv = Int16
+    elseif nunique < typemax(Int32)
+        Tv = Int32
+    else
+        Tv = Int64
+    end
+    
+    ncomp = length(nlevels)
+    cmap, levelmap, cadj = mapping_variables(nlevels)
+    obsidx, obsvecs, obsvecct = comparison_variables(rows, cols, comparisons, nrow, ncol, ncomp, Tv)
+    comparisons = true
+    GC.gc()
+    rows = true
+    cols = true
+    GC.gc()
+    npairs, counts, obsct, misct = count_variables(obsidx, obsvecs, obsvecct, cmap, cadj)
+
+    return SparseComparisonSummary(obsidx, obsvecs, obsvecct, counts, obsct, misct, Int64.(nlevels), cmap, levelmap, cadj, Int64(nrow), Int64(ncol), npairs, ncomp)
 end
 
 function SparseComparisonSummary(comparisons::Array{G, 2},
