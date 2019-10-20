@@ -43,7 +43,7 @@ end
 
 Transform an array of counts to [rows cols counts] array storing only indicies and counts.
 """
-counts2indicies(A::SparseMatrixCSC{G, T}) where {G <: Integer, T <: Integer} = hcat(findnz(A)...)
+counts2indicies(A::SparseMatrixCSC{G}) where {G <: Integer} = hcat(findnz(A)...)
 
 function counts2indicies(A::Array{G, 2}) where G <: Integer
     rows = Int[]
@@ -82,15 +82,24 @@ function counts2indicies(A::Array{G, 3}) where G <: Integer
 end
 
 """
-    get_linkcounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: AbstractFloat}
+    get_linkcounts(pchain::ParameterChain, burnin::Integer = 0)
 
-Return pairwise link counts from a `ParameterChain` in form of [rows cols counts]
+Return pairwise link counts from a `ParameterChain` in form of [rows cols counts].  If `burnin` is set then the counts include only steps with a value strictly greater than `burnin`. 
 """
-function get_linkcounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: AbstractFloat}
+function get_linkcounts(pchain::ParameterChain, burnin::Integer = 0)
+    if burnin < 0
+        @error "burnin cannot be negative"
+    end
     if pchain.linktrace
         ctDict = DefaultDict{Tuple{Int, Int}, Int}(zero(Int))
         for ii in 1:size(pchain.C, 1)
-            ctDict[(pchain.C[ii, 1], pchain.C[ii, 2])] += pchain.C[ii, end] + one(Int) - pchain.C[ii, end - 1]
+            if pchain.C[ii, end] > burnin
+                if pchain.C[ii, end - 1] > burnin
+                    ctDict[(pchain.C[ii, 1], pchain.C[ii, 2])] += pchain.C[ii, end] + one(Int) - pchain.C[ii, end - 1]
+                else
+                    ctDict[(pchain.C[ii, 1], pchain.C[ii, 2])] += pchain.C[ii, end] - burnin
+                end
+            end
         end
         outC = Array{Int, 2}(undef, length(ctDict), 3)
         ii = 0
@@ -102,15 +111,139 @@ function get_linkcounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: 
         end
            return outC 
     else
+        if burnin > 0
+            @error "burnin cannot be applied to a parameter with only stored counts"
+        end
         return pchain.C
     end
 end
 
-function get_linkstagecounts(pchain::ParameterChain{G, T}) where {G <: Integer, T <: AbstractFloat}
+"""
+    get_groupidcounts_column(pchain::ParameterChain, colgroupid::Array{G, 1}) where G <: Integer
+
+Count the number of occurences of a set of ids defined for each record pair for each mcmc step.
+
+See also: [`get_groupidcounts_row`](@ref), [`get_groupidcounts_pair`](@ref)
+"""
+function get_groupidcounts_row(pchain::ParameterChain, rowgroupid::Array{G, 1}) where G <: Integer
+    if !pchain.linktrace
+        @error "pchain.linktrace must be true to extract trace counts"
+    end
+
+    if maximum(pchain.C[:, 1]) > length(rowgroupid)
+        @error "Maximum value for first column of pchain.C greater than number of entries in rowgroupid"
+    end
+
+    minid, maxid = extrema(rowgroupid)
+    if minid < 0
+        @error "negative values observed in rowgroupid"
+    elseif iszero(minid)
+        @warn "zero values in rowgroupid will be ignored"
+    end
+
+    out = zeros(Int, size(pchain.C, 1), maxid)
+    
+    for ii in 1:size(pchain.C, 1)
+        groupid = pairgroupid[pchain.C[ii, 1]]
+        if !iszero(groupid)
+            for jj in pchain.C[ii, end-1]:pchain.C[ii, end]
+                out[jj, groupid] += 1
+            end
+        end
+    end
+    return out
+end
+
+"""
+    get_groupidcounts_column(pchain::ParameterChain{G, T}, colgroupid::Array{G, 1}) where G <: Integer
+
+Count the number of occurences of a set of ids defined for each record pair for each mcmc step.
+
+See also: [`get_groupidcounts_row`](@ref), [`get_groupidcounts_pair`](@ref)
+"""
+function get_groupidcounts_column(pchain::ParameterChain, colgroupid::Array{G, 1}) where G <: Integer
+    if !pchain.linktrace
+        @error "pchain.linktrace must be true to extract trace counts"
+    end
+
+    if maximum(pchain.C[:, 2]) > length(colgroupid)
+        @error "Maximum value for second column of pchain.C greater than length of colgroupid"
+    end
+
+    minid, maxid = extrema(colgroupid)
+    if minid < 0
+        @error "negative values observed in colgroupid"
+    elseif iszero(minid)
+        @warn "zero values in colgroupid will be ignored"
+    end
+
+    out = zeros(Int, size(pchain.C, 1), maxid)
+    
+    for ii in 1:size(pchain.C, 1)
+        groupid = pairgroupid[pchain.C[ii, 2]]
+        if !iszero(groupid)
+            for jj in pchain.C[ii, end-1]:pchain.C[ii, end]
+                out[jj, groupid] += 1
+            end
+        end
+    end
+    return out
+end
+
+"""
+    get_groupidcounts_pair(pchain::ParameterChain, pairgroupid::Union{SparseMatrixCSC{G}, Array{G, 2}}) where G <: Integer
+
+Count the number of occurences of a set of defined for each record pair for each mcmc step.
+
+See also: [`get_groupidcounts_row`](@ref), [`get_groupidcounts_column`](@ref)
+"""
+function get_groupidcounts_pair(pchain::ParameterChain, pairgroupid::Union{SparseMatrixCSC{G}, Array{G, 2}}) where G <: Integer
+    if !pchain.linktrace
+        @error "pchain.linktrace must be true to extract trace counts"
+    end
+
+    if maximum(pchain.C[:, 1]) > size(pairgroupid, 1)
+        @error "Maximum value for first column of pchain.C greater than number of rows in pairgroupid"
+    elseif maximum(pchain.C[:, 2]) > size(pairgroupid, 2)
+        @error "Maximum value for second column of pchain.C greater than number of columns in pairgroupid"
+    end
+
+    minid, maxid = extrema(pairgroupid)
+    if minid < 0
+        @error "negative values observed in pairgroupid"
+    elseif iszero(minid)
+        @warn "zero values in pairgroupid will be ignored"
+    end
+
+    out = zeros(Int, size(pchain.C, 1), maxid)
+    
+    for ii in 1:size(pchain.C, 1)
+        groupid = pairgroupid[pchain.C[ii, 1], pchain.C[ii, 2]]
+        if !iszero(groupid)
+            for jj in pchain.C[ii, end-1]:pchain.C[ii, end]
+                out[jj, groupid] += 1
+            end
+        end
+    end
+    return out
+end
+
+"""
+    get_linkstagecounts(pchain::ParameterChain, burnin::Integer = 0)
+
+Return pairwise link counts from a `ParameterChain` in form of [rows cols counts].  If `burnin` is set then the counts include only steps with a value strictly greater than `burnin`. 
+"""
+function get_linkstagecounts(pchain::ParameterChain, burnin::Integer = 0)
     if pchain.linktrace
         ctDict = DefaultDict{Tuple{Int, Int, Int}, Int}(zero(Int))
         for ii in 1:size(pchain.C, 1)
-            ctDict[(pchain.C[ii, 1], pchain.C[ii, 2], pchain.C[ii, 3])] += pchain.C[ii, end] + one(Int) - pchain.C[ii, end - 1]
+            if pchain.C[ii, end] > burnin
+                if pchain.C[ii, end - 1] > burnin
+                    ctDict[(pchain.C[ii, 1], pchain.C[ii, 2], pchain.C[ii, 3])] += pchain.C[ii, end] + one(Int) - pchain.C[ii, end - 1]
+                else
+                    ctDict[(pchain.C[ii, 1], pchain.C[ii, 2], pchain.C[ii, 3])] += pchain.C[ii, end] - burnin
+                end
+            end
         end
         outC = Array{Int, 2}(undef, length(ctDict), 4)
         ii = 0
