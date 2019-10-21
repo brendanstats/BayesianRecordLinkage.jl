@@ -208,7 +208,13 @@ function get_groupidcounts_pair(pchain::ParameterChain, pairgroupid::Union{Spars
         @error "Maximum value for second column of pchain.C greater than number of columns in pairgroupid"
     end
 
-    minid, maxid = extrema(pairgroupid)
+    if issparse(pairgroupid)
+        minid, maxid = extrema(pairgroupid.nzval)
+        minid = min(minid, zero(G))
+    else
+        minid, maxid = extrema(pairgroupid)
+    end
+    
     if minid < 0
         @error "negative values observed in pairgroupid"
     elseif iszero(minid)
