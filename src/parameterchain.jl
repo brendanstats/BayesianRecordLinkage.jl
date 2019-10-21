@@ -141,10 +141,10 @@ function get_groupidcounts_row(pchain::ParameterChain, rowgroupid::Array{G, 1}) 
         @warn "zero values in rowgroupid will be ignored"
     end
 
-    out = zeros(Int, size(pchain.C, 1), maxid)
+    out = zeros(Int, pchain.nsteps, maxid)
     
     for ii in 1:size(pchain.C, 1)
-        groupid = pairgroupid[pchain.C[ii, 1]]
+        groupid = rowgroupid[pchain.C[ii, 1]]
         if !iszero(groupid)
             for jj in pchain.C[ii, end-1]:pchain.C[ii, end]
                 out[jj, groupid] += 1
@@ -177,10 +177,10 @@ function get_groupidcounts_column(pchain::ParameterChain, colgroupid::Array{G, 1
         @warn "zero values in colgroupid will be ignored"
     end
 
-    out = zeros(Int, size(pchain.C, 1), maxid)
+    out = zeros(Int, pchain.nsteps, maxid)
     
     for ii in 1:size(pchain.C, 1)
-        groupid = pairgroupid[pchain.C[ii, 2]]
+        groupid = colgroupid[pchain.C[ii, 2]]
         if !iszero(groupid)
             for jj in pchain.C[ii, end-1]:pchain.C[ii, end]
                 out[jj, groupid] += 1
@@ -215,7 +215,7 @@ function get_groupidcounts_pair(pchain::ParameterChain, pairgroupid::Union{Spars
         @warn "zero values in pairgroupid will be ignored"
     end
 
-    out = zeros(Int, size(pchain.C, 1), maxid)
+    out = zeros(Int, pchain.nsteps, maxid)
     
     for ii in 1:size(pchain.C, 1)
         groupid = pairgroupid[pchain.C[ii, 1], pchain.C[ii, 2]]
