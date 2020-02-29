@@ -63,21 +63,9 @@ function LinkMatrix(nrow::G, ncol::G, mrows::Array{G, 1}, mcols::Array{G, 1}) wh
 end
 
 """
-    f(x::Type)
+    ==(C1::LinkMatrix, C2::LinkMatrix)
 
-### Arguments
-
-* `var` : brief description
-
-### Details
-
-### Value
-
-### Examples
-
-```julia
-
-```
+Return true if C1 and C2 match
 """
 function ==(C1::LinkMatrix, C2::LinkMatrix)
     if C1.nrow != C2.nrow
@@ -296,6 +284,8 @@ doubleswitch_link(newrow::G, newcol::G, C::LinkMatrix) where G <: Integer = doub
     tuple2links(rows::Array{G, 1}, cols::Array{G, 1}, nrow::G) where G <: Integer
 
 Transform a tuple of link pairs into row2col format of a `LinkMatrix` object.
+
+See also: [`links2tuple`](@ref)
 """
 function tuple2links(rows::Array{G, 1}, cols::Array{G, 1}, nrow::G) where G <: Integer
     row2col = zeros(G, nrow)
@@ -304,3 +294,154 @@ function tuple2links(rows::Array{G, 1}, cols::Array{G, 1}, nrow::G) where G <: I
     end
     return row2col
 end
+
+"""
+    links2tuple(row2col::Array{G, 1}) where G <: Integer
+    links2tuple(C::LinkMatrix{G}) where G <: Integer
+
+Transform a LinkMatrix or a row2col mapping into a tuple of link pairs.
+
+See also: [`tuple2links`](@ref)
+"""
+function links2tuple(row2col::Array{G, 1}) where G <: Integer
+    rows = G[]
+    cols = G[]
+    for (row, col) in enumerate(row2col)
+        if !iszero(col)
+            push!(rows, row)
+            push!(cols, col)
+        end
+    end
+    return rows, cols
+end
+
+function links2tuple(C::LinkMatrix{G}) where G <: Integer
+    rows = Array{G}(undef, C.nlink)
+    cols = Array{G}(undef, C.nlink)
+    
+    row = 1
+    ii = 1
+    
+    while ii <= C.nlink
+        if !iszero(C.row2col[ii])
+            rows[ii] = row
+            cols[ii] = C.row2col[ii]
+            ii += 1
+        end
+        row += 1
+    end
+    return rows, cols
+end
+
+"""
+    row2col_removed(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G <: Integer
+    row2col_removed(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_removed(newC.row2col, oldC.row2col)
+
+Return a tuple of vectors (rowsremoved, colsremoved) containing the row, col pairs of links present in the old set of links but not in the new set of links.
+
+See also: [`row2col_added`](@ref), [`row2col_difference`](@ref)
+"""
+function row2col_removed(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G <: Integer
+    if length(newrow2col) != length(oldrow2col)
+        @error "lengths must match"
+    end
+    rowsremoved = G[]
+    colsremoved = G[]
+    for row in 1:length(newrow2col)
+        if newrow2col[row] != oldrow2col[row]
+            if !iszero(oldrow2col[row])
+                push!(rowsremoved, row)
+                push!(colsremoved, oldrow2col[row])
+            end
+        end
+    end
+    return rowsremoved, colsremoved
+end
+
+row2col_removed(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_removed(newC.row2col, oldC.row2col)
+
+"""
+    row2col_removed(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G <: Integer
+    row2col_removed(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_removed(newC.row2col, oldC.row2col)
+
+Return a tuple of vectors (rowsadded, colsadded) containing the row, col pairs of links present in the new set of links but not in the old set of links.
+
+See also: [`row2col_removed`](@ref), [`row2col_difference`](@ref)
+"""
+function row2col_added(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G <: Integer
+    if length(newrow2col) != length(oldrow2col)
+        @error "lengths must match"
+    end
+    rowsadded = G[]
+    colsadded = G[]
+    for row in 1:length(newrow2col)
+        if newrow2col[row] != oldrow2col[row]
+            if !iszero(newrow2col[row])
+                push!(rowsadded, row)
+                push!(colsadded, newrow2col[row])
+            end
+        end
+    end
+    return rowsadded, colsadded
+end
+
+row2col_added(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_added(newC.row2col, oldC.row2col)
+
+
+"""
+    row2col_difference(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G <: Integer
+    row2col_difference(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_removed(newC.row2col, oldC.row2col)
+
+Return a tuple of vectors (rowsremoved, colsremoved, rowsadded, colsadded) containing the row, col pairs of links present in only one of the two sets. Equivlant to calling `row2col_removed` and `row2col_added` but slightly more efficient as only a single pass through each array is made.
+
+See also: [`row2col_removed`](@ref), [`row2col_added`](@ref)
+"""
+function row2col_difference(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G <: Integer
+    if length(newrow2col) != length(oldrow2col)
+        @error "lengths must match"
+    end
+    
+    rowsremoved = G[]
+    colsremoved = G[]
+    rowsadded = G[]
+    colsadded = G[]
+    
+    for row in 1:length(newrow2col)
+        if newrow2col[row] != oldrow2col[row]
+            if !iszero(oldrow2col[row])
+                push!(rowsremoved, row)
+                push!(colsremoved, oldrow2col[row])
+            end
+
+            if !iszero(newrow2col[row])
+                push!(rowsadded, row)
+                push!(colsadded, newrow2col[row])
+            end
+        end
+    end
+
+    return rowsremoved, colsremoved, rowsadded, colsadded
+    
+end
+
+row2col_difference(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_difference(newC.row2col, oldC.row2col)
+
+"""
+    matched_comparisons(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+    matched_comparisons(C::LinkMatrix{G}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+
+Return a boolean vector with values of true for each comparison vector is at least one record pair with that comparison is matched
+"""
+function matched_comparisons(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+    matchobs = falses(length(compsum.obsvecct))
+    for row in 1:length(row2col)
+        if !iszero(row2col[row]) && row2col[row] <= compsum.ncol
+            if !matchobs[compsum.obsidx[row, row2col[row]]]
+                matchobs[compsum.obsidx[row, row2col[row]]] = true
+            end
+        end
+    end
+    return matchobs
+end
+
+matched_comparisons(C::LinkMatrix{G}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer = matched_comparisons(C.row2col, compsum)
