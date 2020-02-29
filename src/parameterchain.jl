@@ -82,6 +82,24 @@ function counts2indicies(A::Array{G, 3}) where G <: Integer
 end
 
 """
+    add_linkcounts!(pchain::ParameterChain, ctDict::DefaultDict{Tuple{G, G}, G} = DefaultDict{Tuple{Int, Int}, Int}(zero(Int)), burnin::Integer = 0) where G <: Integer
+
+Add pairwise link counts from a `ParameterChain` to a dictionary mapping tuples for record pairs to existing counts.  Mainly an internal function for `get_linkcounts`.
+"""
+function add_linkcounts!(ctDict::DefaultDict{Tuple{G, G}, G}, pchain::ParameterChain, burnin::Integer = 0) where G <: Integer
+        for ii in 1:size(pchain.C, 1)
+            if pchain.C[ii, end] > burnin
+                if pchain.C[ii, end - 1] > burnin
+                    ctDict[(pchain.C[ii, 1], pchain.C[ii, 2])] += pchain.C[ii, end] + one(Int) - pchain.C[ii, end - 1]
+                else
+                    ctDict[(pchain.C[ii, 1], pchain.C[ii, 2])] += pchain.C[ii, end] - burnin
+                end
+            end
+        end
+    return ctDict
+end
+
+"""
     get_linkcounts(pchain::ParameterChain, burnin::Integer = 0)
 
 Return pairwise link counts from a `ParameterChain` in form of [rows cols counts].  If `burnin` is set then the counts include only steps with a value strictly greater than `burnin`. 
