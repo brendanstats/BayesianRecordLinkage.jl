@@ -358,7 +358,7 @@ function row2col_removed(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where
     return rowsremoved, colsremoved
 end
 
-row2col_removed(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_removed(newC.row2col, oldC.row2col)
+row2col_removed(newC::LinkMatrix{G}, oldC::LinkMatrix{G}) where G <: Integer = row2col_removed(newC.row2col, oldC.row2col)
 
 """
     row2col_removed(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G <: Integer
@@ -385,7 +385,7 @@ function row2col_added(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) where G
     return rowsadded, colsadded
 end
 
-row2col_added(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_added(newC.row2col, oldC.row2col)
+row2col_added(newC::LinkMatrix{G}, oldC::LinkMatrix{G}) where G <: Integer = row2col_added(newC.row2col, oldC.row2col)
 
 
 """
@@ -424,7 +424,7 @@ function row2col_difference(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}) wh
     
 end
 
-row2col_difference(newC::LinkMatrix{G, 1}, oldC::LinkMatrix{G, 1}) where G <: Integer = row2col_difference(newC.row2col, oldC.row2col)
+row2col_difference(newC::LinkMatrix{G}, oldC::LinkMatrix{G}) where G <: Integer = row2col_difference(newC.row2col, oldC.row2col)
 
 """
     matched_comparisons(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
