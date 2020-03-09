@@ -34,8 +34,22 @@ function max_MU(mrows::Array{G, 1},
     end
 
     #Generate probabilities
-    pM = (T.(matchcounts) + pseudoM) ./ matchtotals[compsum.cmap]
-    pU = (T.(nonmatchcounts) + pseudoU) ./ nonmatchtotals[compsum.cmap]
+    #pM = (T.(matchcounts) + pseudoM) ./ matchtotals[compsum.cmap]
+    #pU = (T.(nonmatchcounts) + pseudoU) ./ nonmatchtotals[compsum.cmap]
+    pM = zeros(Float64, length(matchcounts))
+    pU = zeros(Float64, length(nonmatchcounts))
+    for ii in 1:length(matchcounts)
+        if matchtotals[compsum.cmap[ii]] > 0.0
+            pM[ii] = (matchcounts[ii] + pseudoM[ii]) /  matchtotals[compsum.cmap[ii]]
+        else
+            pM[ii] = 1.0 / compsum.nlevels[compsum.cmap[ii]]
+        end
+        if nonmatchtotals[compsum.cmap[ii]] > 0.0
+            pU[ii] = (nonmatchcounts[ii] + pseudoU[ii]) /  nonmatchtotals[compsum.cmap[ii]]
+        else
+            pU[ii] = 1.0 / compsum.nlevels[compsum.cmap[ii]]
+        end
+    end
     
     return pM, pU
 end
@@ -58,11 +72,66 @@ function max_MU(rows2cols::Array{G, 1},
     end
 
     #Generate probabilities
-    pM = (T.(matchcounts) + pseudoM) ./ matchtotals[compsum.cmap]
-    pU = (T.(nonmatchcounts) + pseudoU) ./ nonmatchtotals[compsum.cmap]
+    #pM = (T.(matchcounts) + pseudoM) ./ matchtotals[compsum.cmap]
+    #pU = (T.(nonmatchcounts) + pseudoU) ./ nonmatchtotals[compsum.cmap]
+    pM = zeros(Float64, length(matchcounts))
+    pU = zeros(Float64, length(nonmatchcounts))
+    for ii in 1:length(matchcounts)
+        if matchtotals[compsum.cmap[ii]] > 0.0
+            pM[ii] = (matchcounts[ii] + pseudoM[ii]) /  matchtotals[compsum.cmap[ii]]
+        else
+            pM[ii] = 1.0 / compsum.nlevels[compsum.cmap[ii]]
+        end
+        if nonmatchtotals[compsum.cmap[ii]] > 0.0
+            pU[ii] = (nonmatchcounts[ii] + pseudoU[ii]) /  nonmatchtotals[compsum.cmap[ii]]
+        else
+            pU[ii] = 1.0 / compsum.nlevels[compsum.cmap[ii]]
+        end
+    end
     
     return pM, pU
 end
+
+function max_MU(rows2cols::Array{G, 1},
+                compsum::Union{ComparisonSummary, SparseComparisonSummary},
+                pseudoM::Array{T, 1},
+                pseudoU::Array{T, 1},
+                w::Array{H, 1},
+                threshold::H) where {G <: Integer, T <: Real, H <: AbstractFloat}
+    #Count Match / Non-match observations
+    matchcounts, matchobs = counts_matches(rows2cols, compsum, w, threshold)
+    nonmatchcounts = compsum.counts - matchcounts
+    nonmatchobs = compsum.obsct - matchobs
+
+    #Add regularization to generate denominators
+    matchtotals = promote_type(Int64, T).(matchobs)
+    nonmatchtotals = promote_type(Int64, T).(nonmatchobs)
+    for (ii, pm, pu) in zip(compsum.cmap, pseudoM, pseudoU)
+        matchtotals[ii] += pm
+        nonmatchtotals[ii] += pu
+    end
+
+    #Generate probabilities
+    #pM = (T.(matchcounts) + pseudoM) ./ matchtotals[compsum.cmap]
+    #pU = (T.(nonmatchcounts) + pseudoU) ./ nonmatchtotals[compsum.cmap]
+    pM = zeros(Float64, length(matchcounts))
+    pU = zeros(Float64, length(nonmatchcounts))
+    for ii in 1:length(matchcounts)
+        if matchtotals[compsum.cmap[ii]] > 0.0
+            pM[ii] = (matchcounts[ii] + pseudoM[ii]) /  matchtotals[compsum.cmap[ii]]
+        else
+            pM[ii] = 1.0 / compsum.nlevels[compsum.cmap[ii]]
+        end
+        if nonmatchtotals[compsum.cmap[ii]] > 0.0
+            pU[ii] = (nonmatchcounts[ii] + pseudoU[ii]) /  nonmatchtotals[compsum.cmap[ii]]
+        else
+            pU[ii] = 1.0 / compsum.nlevels[compsum.cmap[ii]]
+        end
+    end
+    
+    return pM, pU
+end
+
 
 #can also be used inside cluster based solver
 function max_C_hungarian(weightMat::SparseMatrixCSC{T}, maxw::T) where T <: AbstractFloat
