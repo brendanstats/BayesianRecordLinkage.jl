@@ -311,3 +311,31 @@ function get_segmentlinks(nstart::Integer, nstop::Integer, pchain::ParameterChai
     keep = (pchain.C[:, (end - 1)] .<= nstart) .* (pchain.C[:, end] .>= nstop)
     return pchain.C[keep, 1], pchain.C[keep, 2]
 end
+
+
+"""
+    update_Ctrace_vars!(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}, iter::Integer, linkrows::Array{G, 1}, linkcols::Array{G, 1}, linkstart::Array{G,1}, linkend::Array{G, 1}, startrow2col::Array{G, 1}) where G <: Integer
+    update_Ctrace_vars!(row2col::Array{G, 1}, iter::Integer, linkrows::Array{G, 1}, linkcols::Array{G, 1}, linkstart::Array{G,1}, linkend::Array{G, 1}, row2start::Array{G, 1}) where G <: Integer
+
+Update tracking vars to generate the C object for a ParameterChain object with pchain.trace = true.  If oldrow2col is not supplied then it is assumed that the run has ended and all links in row2col should be recorded as ending.
+"""
+function update_Ctrace_vars!(newrow2col::Array{G, 1}, oldrow2col::Array{G, 1}, iter::Integer, linkrows::Array{G, 1}, linkcols::Array{G, 1}, linkstart::Array{G,1}, linkend::Array{G, 1}, row2start::Array{G, 1}) where G <: Integer
+    rowsremoved, colsremoved, rowsadded, colsadded = row2col_difference(newrow2col, oldrow2col)
+    append!(linkrows, rowsremoved)
+    append!(linkcols, colsremoved)
+    append!(linkstart, row2start[rowsremoved])
+    append!(linkend, fill(iter - one(G), length(rowsremoved)))
+    if length(rowsadded) > 0
+        row2start[rowsadded] .= iter
+    end
+    return linkrows, linkcols, linkstart, linkend, row2start
+end
+
+function update_Ctrace_vars!(row2col::Array{G, 1}, iter::Integer, linkrows::Array{G, 1}, linkcols::Array{G, 1}, linkstart::Array{G,1}, linkend::Array{G, 1}, row2start::Array{G, 1}) where G <: Integer
+    rows = findall(!iszero, row2col)
+    append!(linkrows, rows)
+    append!(linkcols, row2col[rows])
+    append!(linkstart, row2start[rows])
+    append!(linkend, fill(iter, length(rows)))
+    return linkrows, linkcols, linkstart, linkend, row2start
+end
