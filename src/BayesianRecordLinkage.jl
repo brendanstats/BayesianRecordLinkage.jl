@@ -6,7 +6,7 @@ using DataStructures: Queue, enqueue!, dequeue!, DefaultDict
 using StatsBase
 using StatsFuns: logit, logistic, log1pexp, loghalf, softmax, softmax!, logsumexp, logaddexp
 using SparseArrays
-using SpecialFunctions: lfactorial, lbeta
+using SpecialFunctions: logfactorial, logbeta
 using Dates
 import Base: ==
 
@@ -39,7 +39,12 @@ export LinkMatrix,
     switchcol_link!,
     switchcol_link,
     doubleswitch!_link,
-    doubleswitch_link
+    doubleswitch_link,
+    tuple2links,
+    links2tuple,
+    row2col_removed,
+    row2col_added,
+    row2col_difference
 export ParameterChain,
     counts2indicies,
     get_linkcounts,
@@ -48,7 +53,8 @@ export ParameterChain,
     get_groupidcounts_pair,
     get_linkstagecounts,
     get_steplinks,
-    get_segmentlinks
+    get_segmentlinks,
+    update_Ctrace_vars!
 export PosthocBlocks,
     label2dict
 export E_step,
@@ -96,16 +102,9 @@ export penalized_likelihood_hungarian,
     map_solver_cluster,
     map_solver_auction,
     map_solver_auction_cluster
-export next_penalty,
-    map_solver_iter,
-    map_solver_iter_cluster,
-    map_solver_search,
+export incr_penalty,
     penalized_likelihood_search_hungarian,
-    penalized_likelihood_search_auction,
-    map_solver_search_cluster,
-    map_solver_search_initialize,
-    map_solver_search_auction,
-    map_solver_search_auction_cluster
+    penalized_likelihood_search_auction
 export exppenalty_logprior,
     betabipartite_logprior,
     exppenalty_logratio,

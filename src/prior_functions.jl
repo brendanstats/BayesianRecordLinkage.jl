@@ -151,7 +151,7 @@ Terminology taken from Sadinle "Bayesian Estimation of Bipartite Matchings for R
 See also: [`betabipartite_prior`](@ref), [`betabipartite_ratio`](@ref), [`betabipartite_logratio`](@ref), [`betabipartite_ratiopn`](@ref), [`betabipartite_logratiopn`](@ref)
 """
 function betabipartite_logprior(nlink::Integer, nrow::Integer, ncol::Integer, α::Real, β::Real)
-    nrow >= ncol ? lfactorial(nrow - nlink) - lfactorial(nrow) +  lbeta(nlink + α, ncol - nlink + β) - lbeta(α, β) : lfactorial(ncol - nlink) - lfactorial(ncol) + lbeta(nlink + α, nrow - nlink + β) - lbeta(α, β)
+    nrow >= ncol ? logfactorial(nrow - nlink) - logfactorial(nrow) +  logbeta(nlink + α, ncol - nlink + β) - logbeta(α, β) : logfactorial(ncol - nlink) - logfactorial(ncol) + logbeta(nlink + α, nrow - nlink + β) - logbeta(α, β)
 end
 
 betabipartite_logprior(C::LinkMatrix, α::Real, β::Real) = betabipartite_logprior(C.nlink, C.nrow, C.ncol, α, β)
@@ -210,7 +210,7 @@ function betabipartite_logratio(nlink1::Integer, nlink2::Integer, nrow::Integer,
     if nlink1 == nlink2
         return 0.0
     else
-        nrow >= ncol ? lfactorial(nrow - nlink1) - lfactorial(nrow - nlink2) + lbeta(nlink1 + α, ncol - nlink1 + β) - lbeta(nlink2 + α, ncol - nlink2 + β) : lfactorial(ncol - nlink1) - lfactorial(ncol - nlink2) + lbeta(nlink1 + α, nrow - nlink1 + β) - lbeta(nlink2 + α, nrow - nlink2 + β)
+        nrow >= ncol ? logfactorial(nrow - nlink1) - logfactorial(nrow - nlink2) + logbeta(nlink1 + α, ncol - nlink1 + β) - logbeta(nlink2 + α, ncol - nlink2 + β) : logfactorial(ncol - nlink1) - logfactorial(ncol - nlink2) + logbeta(nlink1 + α, nrow - nlink1 + β) - logbeta(nlink2 + α, nrow - nlink2 + β)
     end
 end
 
@@ -239,8 +239,8 @@ function betabipartite_logratiopn(nadd::Integer, nlink::Integer, nrow::Integer, 
         return betabipartite_logratiopn(nadd, nlink, ncol, nrow, α, β)
     end
     nnew = nlink + nadd
-    coeff1 = lfactorial(nrow - nnew) - lfactorial(nrow - nlink)
-    coeff2 = lbeta(nnew + α, ncol - nnew + β) - lbeta(nlink + α, ncol - nlink + β)
+    coeff1 = logfactorial(nrow - nnew) - logfactorial(nrow - nlink)
+    coeff2 = logbeta(nnew + α, ncol - nnew + β) - logbeta(nlink + α, ncol - nlink + β)
     return coeff1 + coeff2
 end
 
