@@ -8,54 +8,42 @@ function minimum_margin(x::Array{T, 1}, minmargin::T = zero(T), digits::Integer 
 end
 
 """
-    count_matches(matchedrows, matchedcols, comparisonSummary) -> matchcounts, matchobs
+    matches2veccounts(mrows::Array{G, 1}, mcols::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+    matches2veccounts(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
 
-Returns vectors comparable to comparisonSummary.counts and comparisonSummary.obsct
-corresponding to 
+Take a set of matches and return a count of how many matches are of each comparison vector type
 """
-function counts_matches(mrows::Array{G, 1},
-                        mcols::Array{G, 1},
-                        compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
-    
-    #count occurences of each observation in obsvecs
+function matches2veccounts(mrows::Array{G, 1}, mcols::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
     matchvecct = zeros(Int64, length(compsum.obsvecct))
     for (ii, jj) in zip(mrows, mcols)
         matchvecct[compsum.obsidx[ii, jj]] += 1
     end
-
-    #map observation occurences to counts
-    matchcounts = zeros(Int64, length(compsum.counts))
-    matchobs = zeros(Int64, compsum.ncomp)
-    for (jj, ct) in pairs(IndexLinear(), matchvecct)
-        if ct > 0
-            for ii in 1:compsum.ncomp
-                if compsum.obsvecs[ii, jj] != 0
-                    matchobs[ii] += ct
-                    matchcounts[compsum.cadj[ii] + compsum.obsvecs[ii, jj]] += ct
-                end
-            end
-        end
-    end
-    return matchcounts, matchobs
+    return matchvecct
 end
 
-#change to count_matches(findn(C.row2col)..., compsum)?
-function counts_matches(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
-    
-    #count occurences of each observation in obsvecs
+function matches2veccounts(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
     matchvecct = zeros(Int64, length(compsum.obsvecct))
     for (ii, jj) in pairs(IndexLinear(), row2col)
         if jj != zero(G)
             matchvecct[compsum.obsidx[ii, jj]] += 1
         end
     end
+    return matchvecct
+end
 
+"""
+    veccounts2matchcounts(matchvecct::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+
+Take a count of how many times each comparison vector was matched and generate a count within each comparison by comparison field
+a total of the number of observed (i.e. non-missing) matches for each field.
+"""
+function veccounts2matchcounts(matchvecct::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
     #map observation occurences to counts
-    matchcounts = zeros(Int64, length(compsum.counts))
-    matchobs = zeros(Int64, compsum.ncomp)
+    matchcounts = zeros(G, length(compsum.counts))
+    matchobs = zeros(G, compsum.ncomp)
 
     for (jj, ct) in pairs(IndexLinear(), matchvecct)
-        if ct > 0
+        if ct > zero(G)
             for ii in 1:compsum.ncomp
                 if compsum.obsvecs[ii, jj] != 0
                     matchobs[ii] += ct
@@ -67,7 +55,89 @@ function counts_matches(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, 
     return matchcounts, matchobs
 end
 
+"""
+    count_matches(mrows::Array{G, 1}, mcols::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+    counts_matches(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+    counts_matches(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, w::Array{T, 1}, threshold::T) where {G <: Integer, T <: AbstractFloat}
+    counts_matches(C::LinkMatrix{G}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer = counts_matches(C.row2col, compsum)
+    counts_matches(C::LinkMatrix{G}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer = counts_matches(C.row2col, compsum)
+
+Returns vectors comparable to comparisonSummary.counts and comparisonSummary.obsct
+corresponding to number of actually matches entries.  If `w` and `threshold` parameters
+are included then only record pairs for which w > threshold are included in the counts.
+"""
+function counts_matches(mrows::Array{G, 1}, mcols::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+    
+    #count occurences of each observation in obsvecs
+    matchvecct = matches2veccounts(mrows, mcols, compsum)
+    # matchvecct = zeros(Int64, length(compsum.obsvecct))
+    # for (ii, jj) in zip(mrows, mcols)
+    #     matchvecct[compsum.obsidx[ii, jj]] += 1
+    # end
+
+    #map observation occurences to counts
+    return veccounts2matchcounts(matchvecct, compsum)
+    # matchcounts = zeros(Int64, length(compsum.counts))
+    # matchobs = zeros(Int64, compsum.ncomp)
+    # for (jj, ct) in pairs(IndexLinear(), matchvecct)
+    #     if ct > 0
+    #         for ii in 1:compsum.ncomp
+    #             if compsum.obsvecs[ii, jj] != 0
+    #                 matchobs[ii] += ct
+    #                 matchcounts[compsum.cadj[ii] + compsum.obsvecs[ii, jj]] += ct
+    #             end
+    #         end
+    #     end
+    # end
+    # return matchcounts, matchobs
+end
+
+#change to count_matches(findn(C.row2col)..., compsum)?
+function counts_matches(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer
+    
+    #count occurences of each observation in obsvecs
+    matchvecct = matches2veccounts(row2col, compsum)
+    # matchvecct = zeros(Int64, length(compsum.obsvecct))
+    # for (ii, jj) in pairs(IndexLinear(), row2col)
+    #     if jj != zero(G)
+    #         matchvecct[compsum.obsidx[ii, jj]] += 1
+    #     end
+    # end
+
+    #map observation occurences to counts
+    return veccounts2matchcounts(matchvecct, compsum)
+    # matchcounts = zeros(Int64, length(compsum.counts))
+    # matchobs = zeros(Int64, compsum.ncomp)
+
+    # for (jj, ct) in pairs(IndexLinear(), matchvecct)
+    #     if ct > 0
+    #         for ii in 1:compsum.ncomp
+    #             if compsum.obsvecs[ii, jj] != 0
+    #                 matchobs[ii] += ct
+    #                 matchcounts[compsum.cadj[ii] + compsum.obsvecs[ii, jj]] += ct
+    #             end
+    #         end
+    #     end
+    # end
+    # return matchcounts, matchobs
+end
+
+function counts_matches(row2col::Array{G, 1}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, w::Array{T, 1}, threshold::T) where {G <: Integer, T <: AbstractFloat}
+    
+    #count occurences of each observation in obsvecs
+    matchvecct = matches2veccounts(row2col, compsum)
+    for ii in 1:length(matchvecct)
+        if !iszero(matchvecct[ii])
+            if w[ii] <= threshold
+                matchvecct[ii] = 0
+            end
+        end
+    end
+    return veccounts2matchcounts(matchvecct, compsum)
+end
+
 counts_matches(C::LinkMatrix{G}, compsum::Union{ComparisonSummary, SparseComparisonSummary}) where G <: Integer = counts_matches(C.row2col, compsum)
+counts_matches(C::LinkMatrix{G}, compsum::Union{ComparisonSummary, SparseComparisonSummary}, w::Array{T, 1}, threshold::T) where {G <: Integer, T <: AbstractFloat} = counts_matches(C.row2col, compsum, w, threshold)
 
 """
     f(x::Type)
