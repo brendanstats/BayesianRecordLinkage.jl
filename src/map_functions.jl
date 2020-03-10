@@ -108,13 +108,16 @@ function penalized_likelihood_auction(pM0::Array{G, 1}, pU0::Array{G, 1},
     pseudoU = priorU - ones(T, length(priorU))
 
     wpenalized = penalized_weights_vector(pM0, pU0, compsum, penalty)
-    atol = minimum_margin(wpenalized, minmargin, digt)
-    if cluster
-        astate = max_C_cluster_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+    if maximum(wpenalized) <= 0.0
+        astate = AssignmentState(zeros(T, compsum.nrow), zeros(T, compsum.nrow + compsum.ncol))
     else
-        astate = max_C_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+        atol = minimum_margin(wpenalized, minmargin, digt)
+        if cluster
+            astate = max_C_cluster_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+        else
+            astate = max_C_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+        end
     end
-
     if update
         lambda = min_assigned_colprice(astate)
         prevW = wpenalized
@@ -131,26 +134,29 @@ function penalized_likelihood_auction(pM0::Array{G, 1}, pU0::Array{G, 1},
         end
 
         wpenalized = penalized_weights_vector(pM, pU, compsum, penalty)
-        atol = minimum_margin(wpenalized, minmargin, digt)
-        if update
-            if cluster
-                epsi0 = max(maximum(wpenalized - prevW), zero(T)) + atol
-                clear_assignment!(astate)
-                astate, lambda = max_C_cluster_auction!(astate, wpenalized, compsum, lambda, epsi0, atol, epsiscale = epsiscale)
-            else
-                epsi0 = max(maximum(wpenalized - prevW), zero(T)) + (atol / compsum.nrow)
-                clear_assignment!(astate)
-                
-                astate, lambda = max_C_auction!(astate, lambda, epsi0, atol, wpenalized, compsum, epsiscale = epsiscale)
-            end
+        if maximum(wpenalized) <= 0.0
+            clear_assignment!(astate)
         else
-            if cluster
-                astate = max_C_cluster_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+            atol = minimum_margin(wpenalized, minmargin, digt)
+            if update
+                if cluster
+                    epsi0 = max(maximum(wpenalized - prevW), zero(T)) + atol
+                    clear_assignment!(astate)
+                    astate, lambda = max_C_cluster_auction!(astate, wpenalized, compsum, lambda, epsi0, atol, epsiscale = epsiscale)
+                else
+                    epsi0 = max(maximum(wpenalized - prevW), zero(T)) + (atol / compsum.nrow)
+                    clear_assignment!(astate)
+                    
+                    astate, lambda = max_C_auction!(astate, lambda, epsi0, atol, wpenalized, compsum, epsiscale = epsiscale)
+                end
             else
-                astate = max_C_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+                if cluster
+                    astate = max_C_cluster_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+                else
+                    astate = max_C_auction(wpenalized, atol, compsum, epsiscale = epsiscale)
+                end
             end
         end
-
         iter += 1
         if verbose
             println("Iteration: $iter")
