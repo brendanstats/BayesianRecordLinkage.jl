@@ -1,17 +1,25 @@
 # BayesianRecordLinkage
 Collection of methods for performing Bayesian inference for large-scale record linkage problems as described in [Scaling Bayesian Probabilistic Record Linkage with Post-Hoc Blocking: An Application to the California Great Registers](https://arxiv.org/abs/1905.05337).  
 
+## Install Julia
+
+Install Julia for Mac, Windows, or Linux at https://julialang.org/downloads/
+
+A tutorial on Julia can be found here: https://www.sas.upenn.edu/~jesusfv/Chapter_HPC_8_Julia.pdf
+
+
 ## Installation
 ```julia
+]
 pkg> add https://github.com/brendanstats/AssignmentSolver.jl
 pkg> add https://github.com/brendanstats/BayesianRecordLinkage.jl
 ```
 
 ### Dependencies
-In addition to the `AssignmentSolver` module the following packages are loaded: `Distributions`, `DataStructures`, `StatsBase`, `StatsFuns`, `SparseArrays`, `SpecialFunctions`, `Dates`.  These should be installed automatically by the package manager but can be installed with the following line if necessary.
+In addition to the `AssignmentSolver` module the following packages are loaded: `Distributions`, `DataStructures`, `StatsBase`, `StatsFuns`, `SparseArrays`, `SpecialFunctions`, `Dates` `StringDistances`.  These should be installed automatically by the package manager but can be installed with the following line if necessary.
 
 ```julia
-pkg> add Distributions DataStructures StatsBase StatsFuns SparseArrays SpecialFunctions Dates
+pkg> add Distributions DataStructures StatsBase StatsFuns SparseArrays SpecialFunctions Dates StringDistances
 ```
 
 # Methods
