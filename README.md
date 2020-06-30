@@ -10,7 +10,7 @@ A tutorial on Julia can be found here: https://www.sas.upenn.edu/~jesusfv/Chapte
 
 ## Installation
 ```julia
-] # = allows on to install packages 
+julia> ] 
 pkg> add https://github.com/brendanstats/AssignmentSolver.jl
 pkg> add https://github.com/brendanstats/BayesianRecordLinkage.jl
 ```
