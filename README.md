@@ -55,7 +55,7 @@ occupInd = findfirst(x -> x == "occup", vec(varA))
 
 ## Define function to generate an ordinal comparison between two strings using a Levenshtein sting distance
 function levOrd(s1::String, s2::String)
-    levsim = compare(Levenshtein(), s1, s2)
+    levsim = compare(s1, s2, Levenshtein())
     if levsim == 1.0
         return Int8(1)
     elseif levsim >= 0.75
@@ -163,8 +163,8 @@ The `SparseComparisonSummary` type is avaiable for problems where comparison vec
 indsA = Int32[]
 indsB = Int32[]
 for jj in 1:nB, ii in 1:nA
-    gnameComp = compare(Levenshtein(), dataA[ii, gnameInd], dataB[jj, gnameInd])
-    fnameComp = compare(Levenshtein(), dataA[ii, fnameInd], dataB[jj, fnameInd])
+    gnameComp = compare(dataA[ii, gnameInd], dataB[jj, gnameInd], Levenshtein())
+    fnameComp = compare(dataA[ii, fnameInd], dataB[jj, fnameInd], Levenshtein())
     if (gnameComp > 0.6) || (fnameComp > 0.6)
         push!(indsA, ii)
         push!(indsB, jj)
