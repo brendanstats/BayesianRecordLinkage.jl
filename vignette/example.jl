@@ -19,7 +19,7 @@ nA = size(dataA, 1)
 nB = size(dataB, 1)
 
 function levOrd(s1::String, s2::String)
-    levsim = compare(Levenshtein(), s1, s2)
+    levsim = compare(s1, s2, Levenshtein())
     if levsim == 1.0
         return Int8(1)
     elseif levsim >= 0.75
